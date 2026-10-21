@@ -68,6 +68,15 @@ HorizonCapital/
 ├── database/
 │   ├── schema.sql
 │   └── seed.sql
+├── web-client/
+│   ├── package.json
+│   ├── index.html
+│   └── src/
+│       ├── App.jsx
+│       ├── components/
+│       ├── config/
+│       ├── data/
+│       └── utils/
 ├── mobile-client/
 │   ├── package.json
 │   ├── assets/
@@ -87,6 +96,34 @@ HorizonCapital/
 │       ├── routes/
 │       └── services/
 └── .gitignore
+```
+
+## Implementation Status
+
+### Implemented in the web prototype
+
+- Responsive dashboard with readiness score and cash-flow forecast
+- WhatsApp-style order intake and simulated counter-offer flow
+- Ledger with cash and digital balances, plus simulated transaction capture
+- Micro-POS payment simulation
+- Funding offer and disbursement simulation
+- Market Linker profile and funder report views
+- Desktop, tablet, and smartphone preview modes
+
+### Not implemented or connected yet
+
+- The web prototype uses mock data; it is not connected to the database or server
+- Authentication, authorization, and persistent user or transaction records
+- Live banking, payment-provider, SoftPOS/NFC, OCR, or WhatsApp integrations
+- Production credit decisioning, fraud checks, and compliance controls
+- A working native mobile client or documented, implemented API endpoints
+
+### Run the web prototype
+
+```bash
+cd web-client
+npm install
+npm run dev
 ```
 
 ## Getting Started
