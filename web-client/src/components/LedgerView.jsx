@@ -1,725 +1,885 @@
-import React, { useState } from 'react';
-import { 
-  Wallet, 
-  Camera, 
-  Plus, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Search, 
-  Filter, 
-  Receipt, 
-  Check, 
-  Sparkles, 
-  Calendar, 
-  Tag, 
-  Download, 
-  Coins, 
+import React, { useMemo, useState } from 'react';
+import {
+  Wallet,
+  Camera,
+  Plus,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Search,
+  Coins,
   Building,
-  UploadCloud,
-  FileCheck2,
-  X
+  Check,
+  X,
+  TrendingUp,
+  TrendingDown,
+  Receipt,
+  CalendarDays,
+  Download,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { sounds } from '../utils/soundEffects';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 
-function getDailyTransactionTotals(transactions) {
-  const totalsByDate = new Map();
+/**
+ * LedgerView
+ *
+ * Props:
+ * - transactions: array of transaction records
+ * - cashInDrawer: current physical cash balance (optional; derived from transactions if omitted)
+ * - digitalBankBalance: current digital balance (optional; derived from transactions if omitted)
+ * - onAddTransaction: callback called after a transaction is added
+ * - presetReceipts: optional sample receipt objects for demonstration
+ *
+ * Notes:
+ * - This component calculates analytics from the transaction data it receives.
+ * - It does not itself persist data. Connect onAddTransaction and the transactions
+ *   prop to your backend/database for persistent, shared real-life data.
+ * - Receipt scanning below is a manual receipt-review flow, not live OCR.
+ */
 
-  transactions.forEach((transaction) => {
-    const date = transaction.date?.split(' ')[0];
-    if (!date || !Number.isFinite(Date.parse(`${date}T00:00:00`))) return;
+const CURRENCY = 'en-ZA';
+const CHART_COLORS = ['#10b981', '#f59e0b', '#38bdf8', '#f472b6', '#a78bfa', '#fb7185'];
 
-    const totals = totalsByDate.get(date) || { date, income: 0, expenses: 0 };
-    if (transaction.type === 'INCOME') {
-      totals.income += Math.abs(transaction.amount);
-    } else if (transaction.type === 'EXPENSE') {
-      totals.expenses += Math.abs(transaction.amount);
-    }
-    totalsByDate.set(date, totals);
-  });
+const DEFAULT_RECEIPTS = [
+  {
+    id: 'sample-receipt-1',
+    merchant: 'Soweto Wholesale',
+    date: new Date().toISOString().slice(0, 10),
+    total: 425.5,
+    taxVat: 55.5,
+    suggestedChannel: 'CASH',
+    category: 'Cost of Goods (Ingredients)',
+    items: [
+      { name: 'Flour', price: 180 },
+      { name: 'Sugar', price: 95.5 },
+      { name: 'Cooking oil', price: 150 },
+    ],
+  },
+  {
+    id: 'sample-receipt-2',
+    merchant: 'Local Packaging Supplier',
+    date: new Date().toISOString().slice(0, 10),
+    total: 280,
+    taxVat: 36.52,
+    suggestedChannel: 'DIGITAL',
+    category: 'Packaging & Bags',
+    items: [
+      { name: 'Paper bags', price: 160 },
+      { name: 'Containers', price: 120 },
+    ],
+  },
+  {
+    id: 'sample-receipt-3',
+    merchant: 'Hardware & Utilities',
+    date: new Date().toISOString().slice(0, 10),
+    total: 199.99,
+    taxVat: 26.09,
+    suggestedChannel: 'CASH',
+    category: 'Utilities & Electricity',
+    items: [
+      { name: 'Cleaning supplies', price: 79.99 },
+      { name: 'Electricity', price: 120 },
+    ],
+  },
+];
 
-  return [...totalsByDate.values()].sort((first, second) => first.date.localeCompare(second.date));
+const CATEGORIES = [
+  'Walk-in Sales',
+  'Order Deposit',
+  'Cost of Goods (Ingredients)',
+  'Packaging & Bags',
+  'Utilities & Electricity',
+  'Transport & Delivery',
+  'Rent',
+  'Equipment',
+  'Other',
+];
+
+function formatZAR(value) {
+  const amount = Number(value);
+  return `R ${Number.isFinite(amount) ? amount : 0}`.replace(
+    /^R (.*)$/,
+    (_, number) =>
+      `R ${Number(number).toLocaleString(CURRENCY, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`
+  );
 }
 
-function IncomeExpensesChart({ transactions }) {
-  const dailyTotals = getDailyTransactionTotals(transactions);
+function parseDate(value) {
+  if (!value) return null;
+  const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) {
+    const [year, month, day] = match[1].split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
-  if (dailyTotals.length === 0) {
-    return (
-      <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
-        <h2 className="text-sm font-bold text-slate-100">Income &amp; Expenses</h2>
-        <p className="text-xs text-slate-400 mt-2">No dated income or expense transactions are available to chart yet.</p>
-      </div>
-    );
+function dateKey(value) {
+  const date = parseDate(value);
+  if (!date) return null;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function prettyDate(value) {
+  const date = parseDate(value);
+  return date
+    ? date.toLocaleDateString(CURRENCY, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : String(value || 'Unknown date');
+}
+
+function makeId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `tx-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getAnalytics(transactions) {
+  const validTransactions = transactions.filter(
+    (tx) => Number.isFinite(Number(tx.amount)) && tx.date
+  );
+
+  const income = validTransactions.filter((tx) => Number(tx.amount) > 0);
+  const expenses = validTransactions.filter((tx) => Number(tx.amount) < 0);
+
+  const totalRevenue = income.reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const totalExpenses = expenses.reduce((sum, tx) => sum + Math.abs(Number(tx.amount)), 0);
+  const digitalRevenue = income
+    .filter((tx) => tx.channel === 'DIGITAL')
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const cashRevenue = income
+    .filter((tx) => tx.channel === 'CASH')
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+
+  const categoryTotals = {};
+  const dailyTotals = {};
+
+  for (const tx of validTransactions) {
+    const amount = Number(tx.amount);
+    const category = tx.category || 'Uncategorised';
+
+    if (amount < 0) {
+      categoryTotals[category] = (categoryTotals[category] || 0) + Math.abs(amount);
+    }
+
+    const day = dateKey(tx.date);
+    if (!day) continue;
+
+    if (!dailyTotals[day]) {
+      dailyTotals[day] = { date: day, revenue: 0, expenses: 0 };
+    }
+
+    if (amount > 0) dailyTotals[day].revenue += amount;
+    if (amount < 0) dailyTotals[day].expenses += Math.abs(amount);
   }
 
-  const width = 760;
-  const height = 250;
-  const padding = { top: 18, right: 18, bottom: 42, left: 68 };
-  const plotWidth = width - padding.left - padding.right;
-  const plotHeight = height - padding.top - padding.bottom;
-  const maximum = Math.max(1, ...dailyTotals.flatMap(({ income, expenses }) => [income, expenses]));
-  const x = (index) => padding.left + (dailyTotals.length === 1 ? plotWidth / 2 : index * plotWidth / (dailyTotals.length - 1));
-  const y = (value) => padding.top + plotHeight - (value / maximum) * plotHeight;
-  const incomePath = dailyTotals.map((entry, index) => `${index === 0 ? 'M' : 'L'} ${x(index)} ${y(entry.income)}`).join(' ');
-  const expensePath = dailyTotals.map((entry, index) => `${index === 0 ? 'M' : 'L'} ${x(index)} ${y(entry.expenses)}`).join(' ');
-  const labelInterval = Math.max(1, Math.ceil(dailyTotals.length / 6));
-  const formatDate = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' });
-  const formatAmount = (amount) => `R${Math.round(amount).toLocaleString('en-ZA')}`;
+  return {
+    transactionCount: validTransactions.length,
+    totalRevenue,
+    totalExpenses,
+    netCashFlow: totalRevenue - totalExpenses,
+    digitalRevenue,
+    cashRevenue,
+    digitalSalesShare: totalRevenue > 0 ? (digitalRevenue / totalRevenue) * 100 : 0,
+    expensesByCategory: Object.entries(categoryTotals)
+      .map(([name, value]) => ({ name, value: Number(value.toFixed(2)) }))
+      .sort((a, b) => b.value - a.value),
+    dailyTrend: Object.values(dailyTotals)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-14),
+  };
+}
+
+function StatCard({ title, value, subtitle, icon: Icon, tone = 'slate' }) {
+  const tones = {
+    slate: 'text-slate-100 bg-slate-800/70',
+    green: 'text-emerald-300 bg-emerald-500/10',
+    amber: 'text-amber-300 bg-amber-500/10',
+    cyan: 'text-cyan-300 bg-cyan-500/10',
+    rose: 'text-rose-300 bg-rose-500/10',
+  };
 
   return (
-    <section className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 min-w-0" aria-labelledby="ledger-chart-title">
-      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-        <div>
-          <h2 id="ledger-chart-title" className="text-sm sm:text-base font-bold text-slate-100">Income &amp; Expenses</h2>
-          <p className="text-[11px] text-slate-400 mt-0.5">Recorded totals by transaction date</p>
-        </div>
-        <div className="flex items-center gap-4 text-[11px]" aria-label="Chart legend">
-          <span className="flex items-center gap-1.5 text-slate-300"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />Income</span>
-          <span className="flex items-center gap-1.5 text-slate-300"><span className="w-2.5 h-2.5 rounded-full bg-rose-400" />Expenses</span>
-        </div>
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-slate-400">{title}</p>
+        <span className={`rounded-lg p-2 ${tones[tone] || tones.slate}`}>
+          <Icon className="h-4 w-4" />
+        </span>
       </div>
-
-      <div className="w-full overflow-x-auto">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full min-w-[520px] h-auto"
-          role="img"
-          aria-label="Line chart showing daily income and expenses from ledger transactions"
-        >
-          {[0, 1, 2, 3].map((step) => {
-            const value = maximum * (1 - step / 3);
-            const position = padding.top + plotHeight * step / 3;
-            return (
-              <g key={step}>
-                <line x1={padding.left} x2={width - padding.right} y1={position} y2={position} stroke="#334155" strokeDasharray="3 5" />
-                <text x={padding.left - 10} y={position + 4} textAnchor="end" fill="#94a3b8" fontSize="11">{formatAmount(value)}</text>
-              </g>
-            );
-          })}
-
-          <text x="14" y={padding.top + plotHeight / 2} fill="#94a3b8" fontSize="11" textAnchor="middle" transform={`rotate(-90 14 ${padding.top + plotHeight / 2})`}>Amount (ZAR)</text>
-          <path d={incomePath} fill="none" stroke="#34d399" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-          <path d={expensePath} fill="none" stroke="#fb7185" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-
-          {dailyTotals.map((entry, index) => (
-            <g key={entry.date}>
-              <circle cx={x(index)} cy={y(entry.income)} r="4" fill="#34d399" stroke="#0f172a" strokeWidth="2">
-                <title>{`${formatDate(entry.date)} income: ${formatAmount(entry.income)}`}</title>
-              </circle>
-              <circle cx={x(index)} cy={y(entry.expenses)} r="4" fill="#fb7185" stroke="#0f172a" strokeWidth="2">
-                <title>{`${formatDate(entry.date)} expenses: ${formatAmount(entry.expenses)}`}</title>
-              </circle>
-              {index % labelInterval === 0 && (
-                <text x={x(index)} y={height - 13} fill="#94a3b8" fontSize="11" textAnchor="middle">{formatDate(entry.date)}</text>
-              )}
-            </g>
-          ))}
-          <text x={padding.left + plotWidth / 2} y={height - 1} fill="#94a3b8" fontSize="11" textAnchor="middle">Transaction date</text>
-        </svg>
-      </div>
-    </section>
+      <p className="break-words text-xl font-black tracking-tight text-slate-100 sm:text-2xl">
+        {value}
+      </p>
+      {subtitle && <p className="mt-2 text-xs text-slate-500">{subtitle}</p>}
+    </div>
   );
 }
 
 export default function LedgerView({
-  transactions,
+  transactions: transactionsProp,
   cashInDrawer,
   digitalBankBalance,
   onAddTransaction,
-  presetReceipts
+  presetReceipts = DEFAULT_RECEIPTS,
 }) {
-  const [channelFilter, setChannelFilter] = useState('ALL'); // 'ALL', 'CASH', 'DIGITAL'
-  const [typeFilter, setTypeFilter] = useState('ALL'); // 'ALL', 'INCOME', 'EXPENSE'
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Snap-to-record state
-  const [snapModalOpen, setSnapModalOpen] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState(presetReceipts[0]);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanComplete, setScanComplete] = useState(false);
+  // Local transaction state makes the page usable when no parent supplies transactions.
+  // For production, the parent should pass database-backed transactions.
+  const [localTransactions, setLocalTransactions] = useState([]);
+  const transactions = Array.isArray(transactionsProp) ? transactionsProp : localTransactions;
 
-  // Manual Add Modal State
+  const [channelFilter, setChannelFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [activeTab, setActiveTab] = useState('ledger');
+
+  const [snapModalOpen, setSnapModalOpen] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(presetReceipts[0] || null);
+  const [receiptScanning, setReceiptScanning] = useState(false);
+  const [receiptError, setReceiptError] = useState('');
+  const [receiptNotice, setReceiptNotice] = useState('');
+
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [newDesc, setNewDesc] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newType, setNewType] = useState('INCOME');
   const [newChannel, setNewChannel] = useState('CASH');
   const [newCategory, setNewCategory] = useState('Walk-in Sales');
+  const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
+  const [formError, setFormError] = useState('');
 
-  // Filter transactions
-  const filteredTransactions = transactions.filter(tx => {
-    if (channelFilter !== 'ALL' && tx.channel !== channelFilter) return false;
-    if (typeFilter !== 'ALL' && tx.type !== typeFilter) return false;
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
-      return tx.description.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q);
+  const addTransaction = (transaction) => {
+    if (typeof onAddTransaction === 'function') {
+      onAddTransaction(transaction);
+    } else {
+      setLocalTransactions((current) => [transaction, ...current]);
     }
-    return true;
-  });
-
-  // =========================================================================
-  // API INTEGRATION POINT: Receipt OCR Scanner (Snap-to-Record)
-  // Provider: Google Cloud Vision API (images:annotate) or Mindee Document API
-  // Config / Env: VITE_VISION_OCR_API_KEY (see src/config/apiConfig.js)
-  // Replace this simulation timer with: await callOcrReceiptScanner(receiptFile)
-  // =========================================================================
-  const handleRunOcrScan = (receipt) => {
-    setSelectedReceipt(receipt);
-    setIsScanning(true);
-    setScanComplete(false);
-    sounds.playPosTap();
-
-    setTimeout(() => {
-      setIsScanning(false);
-      setScanComplete(true);
-      sounds.playSuccess();
-    }, 1500);
   };
 
-  const handleCommitScannedReceipt = () => {
-    if (!selectedReceipt) return;
+  const filteredTransactions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
 
-    const newTx = {
-      id: `tx-${Date.now()}`,
-      date: `${selectedReceipt.date} 12:00`,
-      description: `${selectedReceipt.merchant}: ${selectedReceipt.items.map(i => i.name).join(', ')}`,
-      type: 'EXPENSE',
-      channel: selectedReceipt.suggestedChannel,
-      method: 'Snap-to-Record (OCR)',
-      amount: -Math.abs(selectedReceipt.total),
-      category: selectedReceipt.category,
-      status: 'Verified',
-      badge: 'Snap-to-Record'
-    };
+    return transactions.filter((tx) => {
+      if (channelFilter !== 'ALL' && tx.channel !== channelFilter) return false;
+      if (typeFilter === 'INCOME' && Number(tx.amount) <= 0) return false;
+      if (typeFilter === 'EXPENSE' && Number(tx.amount) >= 0) return false;
 
-    onAddTransaction(newTx);
-    setSnapModalOpen(false);
-    setScanComplete(false);
-    sounds.playCashDrawer();
-    confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-  };
+      const txDay = dateKey(tx.date);
+      if (dateFrom && (!txDay || txDay < dateFrom)) return false;
+      if (dateTo && (!txDay || txDay > dateTo)) return false;
 
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (!newDesc || !newAmount) return;
+      if (query) {
+        const searchable = `${tx.description || ''} ${tx.category || ''} ${tx.method || ''}`.toLowerCase();
+        if (!searchable.includes(query)) return false;
+      }
 
-    const parsedAmt = parseFloat(newAmount);
-    const finalAmt = newType === 'EXPENSE' ? -Math.abs(parsedAmt) : Math.abs(parsedAmt);
+      return true;
+    });
+  }, [transactions, channelFilter, typeFilter, searchQuery, dateFrom, dateTo]);
 
-    const newTx = {
-      id: `tx-${Date.now()}`,
-      date: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      description: newDesc,
+  const analytics = useMemo(() => getAnalytics(filteredTransactions), [filteredTransactions]);
+
+  const derivedCashBalance = useMemo(
+    () =>
+      transactions
+        .filter((tx) => tx.channel === 'CASH')
+        .reduce((sum, tx) => sum + Number(tx.amount || 0), 0),
+    [transactions]
+  );
+  const derivedDigitalBalance = useMemo(
+    () =>
+      transactions
+        .filter((tx) => tx.channel === 'DIGITAL')
+        .reduce((sum, tx) => sum + Number(tx.amount || 0), 0),
+    [transactions]
+  );
+
+  const cashBalance = Number.isFinite(Number(cashInDrawer))
+    ? cashInDrawer ?? derivedCashBalance
+    : derivedCashBalance;
+  const digitalBalance = Number.isFinite(Number(digitalBankBalance))
+    ? digitalBankBalance ?? derivedDigitalBalance
+    : derivedDigitalBalance;
+
+  const handleManualSubmit = (event) => {
+    event.preventDefault();
+    setFormError('');
+
+    const amount = Number(newAmount);
+    if (!newDesc.trim()) {
+      setFormError('Please enter a transaction description.');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setFormError('Enter an amount greater than zero.');
+      return;
+    }
+    if (!newDate) {
+      setFormError('Please select a transaction date.');
+      return;
+    }
+
+    const isIncome = newType === 'INCOME';
+    const transaction = {
+      id: makeId(),
+      date: `${newDate} ${new Date().toTimeString().slice(0, 5)}`,
+      description: newDesc.trim(),
       type: newType,
       channel: newChannel,
       method: newChannel === 'CASH' ? 'Cash in Drawer' : 'Digital Bank Transfer',
-      amount: finalAmt,
+      amount: isIncome ? Math.abs(amount) : -Math.abs(amount),
       category: newCategory,
-      status: 'Settled',
-      badge: newChannel === 'CASH' ? 'Cash' : 'Bank'
+      status: 'Manual entry',
+      badge: newChannel === 'CASH' ? 'Cash' : 'Bank',
     };
 
-    onAddTransaction(newTx);
+    addTransaction(transaction);
     setAddModalOpen(false);
     setNewDesc('');
     setNewAmount('');
-    sounds.playCashDrawer();
+    setNewType('INCOME');
+    setNewChannel('CASH');
+    setNewCategory('Walk-in Sales');
+    setNewDate(new Date().toISOString().slice(0, 10));
+  };
+
+  const handleCommitReceipt = () => {
+    if (!selectedReceipt) return;
+
+    const total = Number(selectedReceipt.total);
+    if (!Number.isFinite(total) || total <= 0) {
+      setReceiptError('This receipt has an invalid total.');
+      return;
+    }
+
+    const transaction = {
+      id: makeId(),
+      date: `${selectedReceipt.date || new Date().toISOString().slice(0, 10)} 12:00`,
+      description: `${selectedReceipt.merchant || 'Supplier'}: ${(selectedReceipt.items || [])
+        .map((item) => item.name)
+        .join(', ')}`,
+      type: 'EXPENSE',
+      channel: selectedReceipt.suggestedChannel === 'DIGITAL' ? 'DIGITAL' : 'CASH',
+      method: 'Receipt review',
+      amount: -Math.abs(total),
+      category: selectedReceipt.category || 'Other',
+      status: 'Needs verification',
+      badge: 'Receipt',
+    };
+
+    addTransaction(transaction);
+    setSnapModalOpen(false);
+    setReceiptScanning(false);
+    setReceiptError('');
+    setReceiptNotice('Receipt entry added. Verify it against the original receipt.');
+  };
+
+  const downloadCsv = () => {
+    const rows = [
+      ['Date', 'Description', 'Type', 'Channel', 'Method', 'Category', 'Amount (ZAR)', 'Status'],
+      ...filteredTransactions.map((tx) => [
+        tx.date,
+        tx.description,
+        Number(tx.amount) >= 0 ? 'INCOME' : 'EXPENSE',
+        tx.channel,
+        tx.method,
+        tx.category,
+        Number(tx.amount),
+        tx.status,
+      ]),
+    ];
+
+    const csv = rows
+      .map((row) =>
+        row
+          .map((value) => `"${String(value ?? '').replace(/"/g, '""')}"`)
+          .join(',')
+      )
+      .join('\r\n');
+
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const resetFilters = () => {
+    setChannelFilter('ALL');
+    setTypeFilter('ALL');
+    setSearchQuery('');
+    setDateFrom('');
+    setDateTo('');
   };
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
-      {/* Clean, Modern Header Bar */}
-      <div className="flex w-full flex-col items-stretch gap-3 pb-3 sm:pb-4 border-b border-slate-800">
+    <div className="min-h-screen space-y-5 bg-slate-950 pb-24 text-slate-100">
+      <div className="flex flex-col gap-4 border-b border-slate-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-            <span className="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Township Smart Ledger
             </span>
           </div>
-          <h1 className="text-lg sm:text-2xl font-bold text-slate-100 tracking-tight">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Cash Drawer & Digital Bank
           </h1>
-          <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
-            Clearly separates physical till cash from electronic bank funds to prevent commingling.
+          <p className="mt-1 max-w-2xl text-xs text-slate-400 sm:text-sm">
+            Track income, expenses and payment channels, then analyse business performance from your recorded transactions.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 w-full">
-          {/* Snap-to-record button */}
+        <div className="flex flex-wrap gap-2">
           <button
+            type="button"
             onClick={() => {
               setSnapModalOpen(true);
-              sounds.playPosTap();
+              setReceiptError('');
             }}
-            className="min-w-0 flex-1 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-400"
           >
-            <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span>Snap Receipt</span>
+            <Camera className="h-4 w-4" /> Receipt Entry
           </button>
-
-          {/* Add Manual Transaction */}
           <button
+            type="button"
             onClick={() => {
+              setFormError('');
               setAddModalOpen(true);
-              sounds.playPosTap();
             }}
-            className="min-w-0 flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm font-semibold hover:border-slate-600"
           >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
-            <span>Add Entry</span>
+            <Plus className="h-4 w-4 text-emerald-400" /> Add Entry
           </button>
         </div>
       </div>
 
-      {/* Cash vs. Digital Toggle Bar (The Township Tech Twist) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {/* Cash in Drawer Card */}
-        <div 
-          onClick={() => {
-            setChannelFilter(channelFilter === 'CASH' ? 'ALL' : 'CASH');
-            sounds.playPosTap();
-          }}
-          className={`min-w-0 p-4 rounded-2xl border cursor-pointer transition-all ${
-            channelFilter === 'CASH'
-              ? 'bg-amber-950/40 border-amber-500 shadow-lg shadow-amber-950/50'
-              : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-          }`}
-        >
-          <div className="flex items-start justify-between gap-2 text-xs mb-1">
-            <span className="text-slate-400 font-medium flex items-center gap-1.5">
-              <Coins className="w-4 h-4 text-amber-400" />
-              Physical Cash in Drawer
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              Drawer Box
-            </span>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-amber-300 font-mono">
-            R {cashInDrawer.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-2 flex items-center justify-between">
-            <span>Ready for walk-in supplier cash</span>
-            <span className="text-amber-400 font-semibold">{channelFilter === 'CASH' ? 'Active Filter ✓' : 'Click to filter'}</span>
-          </div>
-        </div>
-
-        {/* Digital Bank Balance Card */}
-        <div 
-          onClick={() => {
-            setChannelFilter(channelFilter === 'DIGITAL' ? 'ALL' : 'DIGITAL');
-            sounds.playPosTap();
-          }}
-          className={`min-w-0 p-4 rounded-2xl border cursor-pointer transition-all ${
-            channelFilter === 'DIGITAL'
-              ? 'bg-emerald-950/40 border-emerald-500 shadow-lg shadow-emerald-950/50'
-              : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-          }`}
-        >
-          <div className="flex items-start justify-between gap-2 text-xs mb-1">
-            <span className="text-slate-400 font-medium flex items-center gap-1.5">
-              <Building className="w-4 h-4 text-emerald-400" />
-              Digital Bank (FNB Business)
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              SoftPOS / EFT
-            </span>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
-            R {digitalBankBalance.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-2 flex items-center justify-between">
-            <span>Pre-vetted for Funder Scorecard</span>
-            <span className="text-emerald-400 font-semibold">{channelFilter === 'DIGITAL' ? 'Active Filter ✓' : 'Click to filter'}</span>
-          </div>
-        </div>
-
-        {/* Consolidated Total Liquidity */}
-        <div 
-          onClick={() => {
-            setChannelFilter('ALL');
-            sounds.playPosTap();
-          }}
-          className={`min-w-0 p-4 rounded-2xl border cursor-pointer transition-all ${
-            channelFilter === 'ALL'
-              ? 'bg-slate-850 border-cyan-500/60 shadow-lg'
-              : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-          }`}
-        >
-          <div className="flex items-start justify-between gap-2 text-xs mb-1">
-            <span className="text-slate-400 font-medium flex items-center gap-1.5">
-              <Wallet className="w-4 h-4 text-cyan-400" />
-              Consolidated Net Liquidity
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-              Total Safe
-            </span>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-slate-100 font-mono">
-            R {(cashInDrawer + digitalBankBalance).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-2 flex items-center justify-between">
-            <span>Combined Township Runway</span>
-            <span className="text-cyan-400 font-semibold">{channelFilter === 'ALL' ? 'Showing All' : 'Reset to All'}</span>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Physical Cash Balance"
+          value={formatZAR(cashBalance)}
+          subtitle="Cash-channel balance from supplied balance or ledger entries"
+          icon={Coins}
+          tone="amber"
+        />
+        <StatCard
+          title="Digital Bank Balance"
+          value={formatZAR(digitalBalance)}
+          subtitle="Digital-channel balance from supplied balance or ledger entries"
+          icon={Building}
+          tone="green"
+        />
+        <StatCard
+          title="Revenue in Filter"
+          value={formatZAR(analytics.totalRevenue)}
+          subtitle={`${analytics.transactionCount} transaction(s) in current filter`}
+          icon={TrendingUp}
+          tone="cyan"
+        />
+        <StatCard
+          title="Net Cash Flow in Filter"
+          value={formatZAR(analytics.netCashFlow)}
+          subtitle={`Expenses: ${formatZAR(analytics.totalExpenses)}`}
+          icon={analytics.netCashFlow >= 0 ? TrendingUp : TrendingDown}
+          tone={analytics.netCashFlow >= 0 ? 'green' : 'rose'}
+        />
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Search Box */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by supplier, item, or category..."
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          {/* Quick Filters */}
-          <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
-            <span className="text-[11px] text-slate-400 mr-1 hidden sm:inline">Type:</span>
-            {['ALL', 'INCOME', 'EXPENSE'].map((t) => (
-              <button
-                key={t}
-                onClick={() => {
-                  setTypeFilter(t);
-                  sounds.playPosTap();
-                }}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  typeFilter === t
-                    ? 'bg-slate-800 text-slate-100 border border-slate-700 font-bold'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {t === 'ALL' ? 'All Transactions' : t === 'INCOME' ? 'Inflows (+)' : 'Outflows (-)'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Transactions Table / List */}
-        <div className="overflow-x-auto pt-2">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px]">
-                <th className="pb-2.5 pl-2">Date & Time</th>
-                <th className="pb-2.5">Description</th>
-                <th className="pb-2.5">Channel / Method</th>
-                <th className="pb-2.5">Category</th>
-                <th className="pb-2.5 text-right pr-2">Amount (ZAR)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredTransactions.slice(0, 4).map((tx) => {
-                const isIncome = tx.amount > 0;
-                return (
-                  <tr key={tx.id} className="hover:bg-slate-850/60 transition-colors">
-                    <td className="py-3 pl-2 text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                      {tx.date}
-                    </td>
-                    <td className="py-3 pr-2 font-medium text-slate-200">
-                      <div className="flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg shrink-0 ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                          {isIncome ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                        </div>
-                        <span className="truncate max-w-[220px] sm:max-w-none">{tx.description}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 pr-2 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                        tx.channel === 'CASH'
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      }`}>
-                        {tx.method}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-2 text-slate-400 whitespace-nowrap">
-                      {tx.category}
-                    </td>
-                    <td className={`py-3 pr-2 text-right font-mono font-bold whitespace-nowrap ${
-                      isIncome ? 'text-emerald-400' : 'text-rose-400'
-                    }`}>
-                      {isIncome ? '+' : ''}R {Math.abs(tx.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {filteredTransactions.length === 0 && (
-            <div className="py-8 text-center text-slate-500 text-xs">
-              No transactions match the selected channel and search filters.
-            </div>
-          )}
-          {filteredTransactions.length > 4 && (
-            <p className="pt-3 text-center text-[11px] text-slate-400">
-              Showing 4 of {filteredTransactions.length} matching transactions.
-            </p>
-          )}
-        </div>
+      <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab('ledger')}
+          className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+            activeTab === 'ledger'
+              ? 'bg-emerald-500 text-slate-950'
+              : 'bg-slate-900 text-slate-400 hover:text-slate-100'
+          }`}
+        >
+          Ledger
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('analytics')}
+          className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+            activeTab === 'analytics'
+              ? 'bg-emerald-500 text-slate-950'
+              : 'bg-slate-900 text-slate-400 hover:text-slate-100'
+          }`}
+        >
+          Analytics
+        </button>
       </div>
 
-      <IncomeExpensesChart transactions={transactions} />
+      {activeTab === 'analytics' ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard title="Total Expenses" value={formatZAR(analytics.totalExpenses)} subtitle="Outflows in current filter" icon={TrendingDown} tone="rose" />
+            <StatCard title="Cash Revenue" value={formatZAR(analytics.cashRevenue)} subtitle="Income recorded as cash" icon={Coins} tone="amber" />
+            <StatCard title="Digital Revenue" value={formatZAR(analytics.digitalRevenue)} subtitle="Income recorded as digital" icon={Building} tone="green" />
+            <StatCard title="Digital Share" value={`${analytics.digitalSalesShare.toFixed(1)}%`} subtitle="Share of recorded revenue" icon={Wallet} tone="cyan" />
+          </div>
 
-      {/* Snap-to-Record OCR Receipt Scanner Modal (Image 2 Concept) */}
-      {snapModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-xl rounded-2xl bg-slate-900 border border-amber-500/40 p-5 shadow-2xl relative space-y-4">
-            <button
-              onClick={() => setSnapModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-100"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
-                  Township Tech Twist
-                </span>
-                <span className="text-xs text-slate-400">Concept: Snap-to-Record</span>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4 xl:col-span-2">
+              <div className="mb-4">
+                <h2 className="text-lg font-bold">Revenue vs Expenses</h2>
+                <p className="text-xs text-slate-400">Daily totals for the selected date range (up to the latest 14 days with transactions).</p>
               </div>
-              <h2 className="text-lg font-bold text-slate-100 mt-1 flex items-center gap-2">
-                <Camera className="w-5 h-5 text-amber-400" />
-                Snap-to-Record Physical Supplier Receipt
-              </h2>
-              <p className="text-xs text-slate-400">
-                Take a photo of paper grocery or hardware slips to auto-extract line items into your ledger.
-              </p>
-            </div>
-
-            {/* Preset Township Merchant Receipts for Live Demo */}
-            <div>
-              <span className="text-[11px] font-semibold text-slate-400 block mb-1.5">
-                Choose a Sample Township Receipt to Scan:
-              </span>
-              <div className="grid grid-cols-3 gap-2">
-                {presetReceipts.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => handleRunOcrScan(r)}
-                    className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
-                      selectedReceipt?.id === r.id
-                        ? 'bg-amber-950/60 border-amber-500 text-amber-200 font-semibold'
-                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="font-bold truncate">{r.merchant.split('-')[0]}</div>
-                    <div className="text-[10px] text-amber-400 font-mono mt-0.5">R {r.total.toFixed(2)}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* OCR Scanner Simulation Area */}
-            <div className="relative p-4 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden text-center min-h-[160px] flex flex-col items-center justify-center">
-              {isScanning ? (
-                <div className="space-y-3">
-                  <div className="w-12 h-12 rounded-full border-2 border-amber-400 border-t-transparent animate-spin mx-auto" />
-                  <div className="text-xs font-semibold text-amber-300">
-                    Running OCR Auto-Extraction...
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    Extracting merchant, items, VAT, and expense category...
-                  </div>
+              {analytics.dailyTrend.length ? (
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={analytics.dailyTrend} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <XAxis dataKey="date" stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                      <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                      <Tooltip
+                        contentStyle={{ background: '#020617', border: '1px solid #334155', borderRadius: 12 }}
+                        labelStyle={{ color: '#e2e8f0' }}
+                        formatter={(value) => formatZAR(value)}
+                      />
+                      <Legend />
+                      <Bar dataKey="revenue" name="Revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expenses" name="Expenses" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              ) : selectedReceipt ? (
-                <div className="w-full text-left space-y-2">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <div>
-                      <div className="font-bold text-slate-100 text-sm">{selectedReceipt.merchant}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">Date: {selectedReceipt.date} • Soweto Hub</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-black text-amber-400 font-mono">
-                        R {selectedReceipt.total.toFixed(2)}
-                      </div>
-                      <div className="text-[9px] text-slate-400">Incl. VAT R{selectedReceipt.taxVat.toFixed(2)}</div>
-                    </div>
-                  </div>
+              ) : (
+                <EmptyState message="Add transactions to see your revenue and expense trend." />
+              )}
+            </section>
 
-                  <div className="text-[11px] text-slate-300 space-y-1">
-                    <div className="font-semibold text-slate-400 text-[10px] uppercase">Extracted Line Items:</div>
-                    {selectedReceipt.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between font-mono text-[11px]">
-                        <span>• {item.name}</span>
-                        <span>R {item.price.toFixed(2)}</span>
+            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+              <h2 className="text-lg font-bold">Expenses by Category</h2>
+              <p className="mb-3 text-xs text-slate-400">Where recorded spending is going</p>
+              {analytics.expensesByCategory.length ? (
+                <>
+                  <div className="h-56 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={analytics.expensesByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={78} innerRadius={42} paddingAngle={2}>
+                          {analytics.expensesByCategory.map((entry, index) => (
+                            <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: '#020617', border: '1px solid #334155', borderRadius: 12 }}
+                          formatter={(value) => formatZAR(value)}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-2">
+                    {analytics.expensesByCategory.slice(0, 6).map((item, index) => (
+                      <div key={item.name} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="flex min-w-0 items-center gap-2 text-slate-300">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                          <span className="truncate">{item.name}</span>
+                        </span>
+                        <span className="shrink-0 font-mono text-slate-100">{formatZAR(item.value)}</span>
                       </div>
                     ))}
                   </div>
-
-                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Suggested Category:</span>
-                    <span className="font-semibold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">
-                      {selectedReceipt.category}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setSnapModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCommitScannedReceipt}
-                disabled={isScanning}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg active:scale-95 transition-all disabled:opacity-50"
-              >
-                <Check className="w-4 h-4" />
-                <span>Confirm & Add to Ledger</span>
-              </button>
-            </div>
+                </>
+              ) : (
+                <EmptyState message="Expense categories will appear after you record expenses." />
+              )}
+            </section>
           </div>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-cyan-400" />
+              <h2 className="text-lg font-bold">Data quality & interpretation</h2>
+            </div>
+            <ul className="list-disc space-y-2 pl-5 text-sm text-slate-400">
+              <li>Analytics reflect only the transactions supplied to this page and the currently selected filters.</li>
+              <li>Manually entered and receipt-review entries should be checked against source documents.</li>
+              <li>Net cash flow here means recorded income minus recorded expenses; it is not a formal accounting profit figure.</li>
+              <li>Connect the parent component to a backend/database for persistent data shared across sessions and devices.</li>
+            </ul>
+          </section>
         </div>
+      ) : (
+        <>
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Search className="h-4 w-4 text-slate-400" />
+              <h2 className="font-bold">Search and filter transactions</h2>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search description, category or method"
+                className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-emerald-500 xl:col-span-2"
+              />
+              <select value={channelFilter} onChange={(event) => setChannelFilter(event.target.value)} className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
+                <option value="ALL">All payment channels</option>
+                <option value="CASH">Cash</option>
+                <option value="DIGITAL">Digital</option>
+              </select>
+              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
+                <option value="ALL">All transaction types</option>
+                <option value="INCOME">Income</option>
+                <option value="EXPENSE">Expenses</option>
+              </select>
+              <button type="button" onClick={resetFilters} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">
+                <RefreshCw className="h-4 w-4" /> Reset filters
+              </button>
+              <label className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-400">
+                <CalendarDays className="h-4 w-4 shrink-0" />
+                From
+                <input aria-label="Start date" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="min-w-0 flex-1 bg-transparent text-slate-200" />
+              </label>
+              <label className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-400">
+                <CalendarDays className="h-4 w-4 shrink-0" />
+                To
+                <input aria-label="End date" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="min-w-0 flex-1 bg-transparent text-slate-200" />
+              </label>
+              <button type="button" onClick={downloadCsv} className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-3 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-400 md:col-span-2 xl:col-span-1">
+                <Download className="h-4 w-4" /> Export CSV
+              </button>
+            </div>
+          </section>
+
+          {receiptNotice && (
+            <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-800 bg-emerald-950/30 p-3 text-sm text-emerald-300">
+              <span>{receiptNotice}</span>
+              <button type="button" onClick={() => setReceiptNotice('')} aria-label="Dismiss notice"><X className="h-4 w-4" /></button>
+            </div>
+          )}
+
+          <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+            <div className="flex flex-col gap-2 border-b border-slate-800 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-bold">Transaction Ledger</h2>
+                <p className="text-xs text-slate-400">{filteredTransactions.length} matching transaction(s)</p>
+              </div>
+              <button type="button" onClick={downloadCsv} className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-700 px-3 py-2 text-xs hover:bg-slate-800 sm:self-auto">
+                <Download className="h-3.5 w-3.5" /> Export filtered records
+              </button>
+            </div>
+            {filteredTransactions.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[850px] text-left text-sm">
+                  <thead className="bg-slate-950/70 text-xs uppercase tracking-wide text-slate-400">
+                    <tr>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Description</th>
+                      <th className="px-4 py-3">Channel / Method</th>
+                      <th className="px-4 py-3">Category</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {filteredTransactions.map((tx) => {
+                      const isIncome = Number(tx.amount) > 0;
+                      return (
+                        <tr key={tx.id} className="hover:bg-slate-800/40">
+                          <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-400">{prettyDate(tx.date)}</td>
+                          <td className="max-w-xs px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className={`rounded-lg p-1.5 ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                {isIncome ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                              </span>
+                              <span className="truncate font-medium">{tx.description || 'No description'}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-xs text-slate-200">{tx.channel || 'Unknown'}</div>
+                            <div className="text-xs text-slate-500">{tx.method || '—'}</div>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-400">{tx.category || 'Uncategorised'}</td>
+                          <td className="px-4 py-3">
+                            <span className="rounded-full border border-slate-700 px-2 py-1 text-[10px] text-slate-300">{tx.status || 'Recorded'}</span>
+                          </td>
+                          <td className={`whitespace-nowrap px-4 py-3 text-right font-mono font-bold ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {isIncome ? '+' : '−'}{formatZAR(Math.abs(Number(tx.amount) || 0))}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState message="No transactions match your filters. Add an entry or reset the filters." />
+            )}
+          </section>
+        </>
       )}
 
-      {/* Manual Entry Modal */}
-      {addModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 p-5 shadow-2xl relative space-y-4">
-            <button
-              onClick={() => setAddModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-100"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <Plus className="w-4 h-4 text-emerald-400" />
-              Add Manual Ledger Entry
-            </h2>
-
-            <form onSubmit={handleManualSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="text-slate-400 block mb-1">Transaction Type</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNewType('INCOME')}
-                    className={`py-2 rounded-xl font-bold transition-colors ${
-                      newType === 'INCOME'
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-950 text-slate-400 border border-slate-800'
-                    }`}
-                  >
-                    Income (+)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewType('EXPENSE')}
-                    className={`py-2 rounded-xl font-bold transition-colors ${
-                      newType === 'EXPENSE'
-                        ? 'bg-rose-600 text-white'
-                        : 'bg-slate-950 text-slate-400 border border-slate-800'
-                    }`}
-                  >
-                    Expense (-)
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Payment Channel (Cash vs Digital)</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNewChannel('CASH')}
-                    className={`py-2 rounded-xl font-bold transition-colors ${
-                      newChannel === 'CASH'
-                        ? 'bg-amber-600 text-white'
-                        : 'bg-slate-950 text-slate-400 border border-slate-800'
-                    }`}
-                  >
-                    Cash Drawer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewChannel('DIGITAL')}
-                    className={`py-2 rounded-xl font-bold transition-colors ${
-                      newChannel === 'DIGITAL'
-                        ? 'bg-teal-600 text-white'
-                        : 'bg-slate-950 text-slate-400 border border-slate-800'
-                    }`}
-                  >
-                    Digital Bank (FNB)
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Description</label>
-                <input
-                  type="text"
-                  required
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                  placeholder="e.g. Sold 20 Chelsea Buns"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Amount (ZAR)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={newAmount}
-                  onChange={(e) => setNewAmount(e.target.value)}
-                  placeholder="e.g. 250.00"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">Category</label>
-                <select
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="Walk-in Sales">Walk-in Sales</option>
-                  <option value="Order Deposit">Order Deposit</option>
-                  <option value="Cost of Goods (Ingredients)">Cost of Goods (Ingredients)</option>
-                  <option value="Packaging & Bags">Packaging & Bags</option>
-                  <option value="Utilities & Electricity">Utilities & Electricity</option>
-                  <option value="Transport & Delivery">Transport & Delivery</option>
-                </select>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
+      {snapModalOpen && (
+        <Modal title="Receipt Entry" onClose={() => setSnapModalOpen(false)}>
+          <p className="text-sm text-slate-400">
+            Choose a sample receipt to review and add to the ledger. This is not live OCR; verify all values against the original receipt.
+          </p>
+          {presetReceipts.length ? (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {presetReceipts.map((receipt) => (
                 <button
+                  key={receipt.id}
                   type="button"
-                  onClick={() => setAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium"
+                  onClick={() => {
+                    setSelectedReceipt(receipt);
+                    setReceiptError('');
+                  }}
+                  className={`rounded-xl border p-3 text-left ${
+                    selectedReceipt?.id === receipt.id
+                      ? 'border-amber-500 bg-amber-950/30'
+                      : 'border-slate-800 bg-slate-950 hover:border-slate-700'
+                  }`}
                 >
-                  Cancel
+                  <span className="block truncate text-sm font-semibold">{receipt.merchant}</span>
+                  <span className="mt-1 block text-xs text-amber-300">{formatZAR(receipt.total)}</span>
+                  <span className="mt-1 block text-[10px] text-slate-500">{prettyDate(receipt.date)}</span>
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
-                >
-                  Save Transaction
-                </button>
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="No sample receipts were supplied." />
+          )}
+
+          {selectedReceipt && (
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="font-bold">{selectedReceipt.merchant}</h3>
+                  <p className="mt-1 text-xs text-slate-400">{prettyDate(selectedReceipt.date)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-black text-amber-300">{formatZAR(selectedReceipt.total)}</p>
+                  <p className="text-xs text-slate-500">VAT: {formatZAR(selectedReceipt.taxVat || 0)}</p>
+                </div>
               </div>
-            </form>
+              <div className="space-y-2 py-3">
+                {(selectedReceipt.items || []).map((item, index) => (
+                  <div key={`${item.name}-${index}`} className="flex justify-between gap-3 text-sm">
+                    <span className="text-slate-300">{item.name}</span>
+                    <span className="font-mono text-slate-300">{formatZAR(item.price)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between border-t border-slate-800 pt-3 text-sm">
+                <span className="text-slate-400">Suggested category</span>
+                <span className="text-emerald-300">{selectedReceipt.category || 'Other'}</span>
+              </div>
+            </div>
+          )}
+
+          {receiptError && <p className="text-sm text-rose-300">{receiptError}</p>}
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => setSnapModalOpen(false)} className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button>
+            <button type="button" onClick={handleCommitReceipt} disabled={!selectedReceipt || receiptScanning} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">
+              <Check className="h-4 w-4" /> Confirm receipt entry
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
+
+      {addModalOpen && (
+        <Modal title="Add Manual Ledger Entry" onClose={() => setAddModalOpen(false)}>
+          <form onSubmit={handleManualSubmit} className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">Transaction type</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setNewType('INCOME')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${newType === 'INCOME' ? 'bg-emerald-600 text-white' : 'border border-slate-700 bg-slate-950 text-slate-400'}`}>Income (+)</button>
+                <button type="button" onClick={() => setNewType('EXPENSE')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${newType === 'EXPENSE' ? 'bg-rose-600 text-white' : 'border border-slate-700 bg-slate-950 text-slate-400'}`}>Expense (−)</button>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">Payment channel</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setNewChannel('CASH')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${newChannel === 'CASH' ? 'bg-amber-600 text-white' : 'border border-slate-700 bg-slate-950 text-slate-400'}`}>Cash</button>
+                <button type="button" onClick={() => setNewChannel('DIGITAL')} className={`rounded-xl px-3 py-2 text-sm font-semibold ${newChannel === 'DIGITAL' ? 'bg-teal-600 text-white' : 'border border-slate-700 bg-slate-950 text-slate-400'}`}>Digital</button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="ledger-description" className="mb-1 block text-sm text-slate-300">Description</label>
+              <input id="ledger-description" required maxLength={200} value={newDesc} onChange={(event) => setNewDesc(event.target.value)} placeholder="e.g. Sold 20 Chelsea buns" className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-emerald-500" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="ledger-amount" className="mb-1 block text-sm text-slate-300">Amount (ZAR)</label>
+                <input id="ledger-amount" required min="0.01" step="0.01" type="number" value={newAmount} onChange={(event) => setNewAmount(event.target.value)} placeholder="250.00" className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label htmlFor="ledger-date" className="mb-1 block text-sm text-slate-300">Transaction date</label>
+                <input id="ledger-date" required type="date" value={newDate} onChange={(event) => setNewDate(event.target.value)} className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-emerald-500" />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="ledger-category" className="mb-1 block text-sm text-slate-300">Category</label>
+              <select id="ledger-category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm">
+                {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </div>
+
+            {formError && <p className="rounded-lg border border-rose-900 bg-rose-950/30 p-3 text-sm text-rose-300">{formError}</p>}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setAddModalOpen(false)} className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-300">Cancel</button>
+              <button type="submit" className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-slate-950 hover:bg-emerald-400">Save transaction</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-sm">
+      <div role="dialog" aria-modal="true" aria-label={title} className="my-8 w-full max-w-2xl space-y-4 rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold">{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close modal" className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ message }) {
+  return (
+    <div className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-800 p-6 text-center">
+      <Receipt className="h-6 w-6 text-slate-600" />
+      <p className="max-w-md text-sm text-slate-400">{message}</p>
     </div>
   );
 }
