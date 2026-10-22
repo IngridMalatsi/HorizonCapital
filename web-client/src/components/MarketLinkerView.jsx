@@ -8,10 +8,10 @@ import {
   Copy, 
   Check, 
   Star, 
-  QrCode, 
   CheckCircle2,
   FileText
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { sounds } from '../utils/soundEffects';
 
 export default function MarketLinkerView({
@@ -191,7 +191,7 @@ export default function MarketLinkerView({
 
               {/* Dynamic QR Code representation */}
               <div className="p-3 bg-white rounded-xl w-36 h-36 mx-auto flex flex-col items-center justify-center shadow-lg">
-                <QrCode className="w-28 h-28 text-slate-950" />
+                <QRCodeSVG value={shareableUrl} size={104} level="M" />
                 <span className="text-[8px] text-slate-700 font-bold tracking-tight">SCAN FOR VERIFIED TRUST</span>
               </div>
 

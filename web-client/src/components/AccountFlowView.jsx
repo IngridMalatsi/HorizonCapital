@@ -21,14 +21,17 @@ const menuItems = [
   { label: 'My addresses', icon: MapPin },
   { label: 'My History', icon: History },
   { label: 'Credit cards', icon: CreditCard },
-  { label: 'Settings', icon: Monitor, screen: 'settings' },
   { label: 'Help & support', icon: HelpCircle }
 ];
 
 const businessToolItems = [
-  { label: 'WhatsApp orders', screen: 'order-intake' },
-  { label: 'SoftPOS', screen: 'micro-pos' },
-  { label: 'Business profile, funding & trust', screen: 'profile' }
+  { label: 'Township Working Capital', icon: CreditCard, screen: 'profile-funding' },
+  { label: 'Market Linker & Trust Badge', icon: ShieldCheck, screen: 'profile-trust' }
+];
+
+const businessSettingsItems = [
+  { label: 'User Account Settings', icon: UserRound, screen: 'profile-account' },
+  { label: 'Application Settings', icon: Monitor, screen: 'profile-settings' }
 ];
 
 const settingsItems = [
@@ -192,10 +195,21 @@ export default function AccountFlowView({
             );
           })}
         </nav>
-        <section className="px-3 rounded-xl bg-slate-900 border border-slate-800" aria-label="Business tools">
-          {businessToolItems.map(({ label, screen: destination }) => (
-            <ListRow key={label} label={label} Icon={UserRound} onClick={() => onNavigate(destination)} />
-          ))}
+        <section className="space-y-2" aria-label="Business tools">
+          <h2 className="px-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Business</h2>
+          <nav className="px-3 rounded-xl bg-slate-900 border border-slate-800">
+            {businessToolItems.map(({ label, icon: Icon, screen: destination }) => (
+              <ListRow key={label} label={label} Icon={Icon} onClick={() => onNavigate(destination)} />
+            ))}
+          </nav>
+        </section>
+        <section className="space-y-2" aria-label="Business and application settings">
+          <h2 className="px-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Settings</h2>
+          <nav className="px-3 rounded-xl bg-slate-900 border border-slate-800">
+            {businessSettingsItems.map(({ label, icon: Icon, screen: destination }) => (
+              <ListRow key={label} label={label} Icon={Icon} onClick={() => onNavigate(destination)} />
+            ))}
+          </nav>
         </section>
         <DemoNotice />
       </div>

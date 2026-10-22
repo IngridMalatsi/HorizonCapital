@@ -11,6 +11,7 @@ import AccountFlowView from './components/AccountFlowView';
 import FunderReportModal from './components/FunderReportModal';
 import ApiKeysModal from './components/ApiKeysModal';
 import DeviceSimulatorFrame from './components/DeviceSimulatorFrame';
+import TrustQrModal from './components/TrustQrModal';
 
 import { 
   BUSINESS_PROFILES, 
@@ -51,6 +52,7 @@ export default function App() {
   const [loanDisbursed, setLoanDisbursed] = useState(false);
   const [funderReportOpen, setFunderReportOpen] = useState(false);
   const [apiKeysModalOpen, setApiKeysModalOpen] = useState(false);
+  const [trustQrOpen, setTrustQrOpen] = useState(false);
 
   // Switch profile handler
   const handleSelectProfile = (profile) => {
@@ -207,7 +209,6 @@ export default function App() {
           onToggleSound={handleToggleSound}
           onOpenReport={() => setFunderReportOpen(true)}
           onOpenApiKeys={() => setApiKeysModalOpen(true)}
-          readinessScore={readinessScore}
         />
       )}
 
@@ -231,7 +232,7 @@ export default function App() {
         )}
 
         {/* Dynamic Main View Content Area */}
-        <main className="flex-1 max-w-7xl mx-auto w-full min-w-0 max-w-[100vw] px-2.5 sm:px-6 py-3.5 sm:py-6 overflow-y-auto overflow-x-hidden">
+        <main className="relative flex-1 max-w-7xl mx-auto w-full min-w-0 max-w-[100vw] px-2.5 sm:px-6 py-3.5 sm:py-6 overflow-y-auto overflow-x-hidden">
           {activeTab === 'dashboard' && (
             <DashboardView
               currentProfile={currentProfile}
@@ -240,10 +241,12 @@ export default function App() {
               cashFlowWeeks={cashFlowWeeks}
               cashInDrawer={cashInDrawer}
               digitalBankBalance={digitalBankBalance}
+              deviceMode={deviceMode}
               onNavigateTab={setActiveTab}
               onNavigateFunding={handleNavigateToFunding}
               onSelectWhatsappPreset={(id) => setCurrentPresetId(id)}
               onOpenReport={() => setFunderReportOpen(true)}
+              onOpenTrustQr={() => setTrustQrOpen(true)}
             />
           )}
 
@@ -275,8 +278,10 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'profile' && (
+          {['profile', 'profile-funding', 'profile-trust', 'profile-account', 'profile-settings'].includes(activeTab) && (
             <ProfileView
+              section={activeTab}
+              onBack={() => setActiveTab('menu')}
               currentProfile={currentProfile}
               readinessScore={readinessScore}
               fundingOffers={FUNDING_OFFERS}
@@ -328,6 +333,14 @@ export default function App() {
         <div className={deviceMode !== 'desktop' ? 'block shrink-0' : 'md:hidden shrink-0'}>
           <BottomNav activeTab={activeTab} onSelectTab={setActiveTab} />
         </div>
+      )}
+
+      {activeTab === 'dashboard' && trustQrOpen && (
+        <TrustQrModal
+          currentProfile={currentProfile}
+          deviceMode={deviceMode}
+          onClose={() => setTrustQrOpen(false)}
+        />
       )}
 
       {/* Printable Institutional ESD Funder Report Modal */}

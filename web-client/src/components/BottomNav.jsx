@@ -10,18 +10,30 @@ import { sounds } from '../utils/soundEffects';
 export default function BottomNav({ activeTab, onSelectTab }) {
   const navItems = [
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
-    { id: 'ledger', label: 'Page', icon: Wallet },
-    { id: 'order-intake', label: 'Page', icon: MessageSquareCheck },
+    { id: 'ledger', label: 'Ledger', icon: Wallet },
+    { id: 'order-intake', label: 'WhatsApp', icon: MessageSquareCheck },
     { id: 'menu', label: 'Menu', icon: MenuIcon },
   ];
-  const accountScreens = ['menu', 'settings', 'user-profile', 'account-settings', 'integrations', 'appearance', 'profile'];
+  const accountScreens = [
+    'menu',
+    'settings',
+    'user-profile',
+    'account-settings',
+    'integrations',
+    'appearance',
+    'profile',
+    'profile-funding',
+    'profile-trust',
+    'profile-account',
+    'profile-settings'
+  ];
   const currentTab = accountScreens.includes(activeTab) || activeTab.startsWith('unavailable:')
     ? 'menu'
     : activeTab;
 
   return (
     <nav className="sticky bottom-0 left-0 right-0 z-30 w-full bg-slate-900/95 backdrop-blur-md border-t border-slate-800/90 text-slate-400 px-1 py-1 shadow-2xl shrink-0 select-none">
-      <div className="max-w-lg mx-auto grid grid-cols-5 gap-0.5">
+      <div className="max-w-lg mx-auto grid grid-cols-4 gap-0.5">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;

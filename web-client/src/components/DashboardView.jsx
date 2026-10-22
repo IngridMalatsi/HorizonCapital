@@ -11,6 +11,7 @@ import {
   Calendar, 
   Building2, 
   Coins, 
+  QrCode,
 } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 
@@ -21,10 +22,12 @@ export default function DashboardView({
   cashFlowWeeks,
   cashInDrawer,
   digitalBankBalance,
+  deviceMode,
   onNavigateTab,
   onNavigateFunding,
   onSelectWhatsappPreset,
-  onOpenReport
+  onOpenReport,
+  onOpenTrustQr
 }) {
   const [selectedScenario, setSelectedScenario] = useState('baseline'); // 'baseline', 'unhedged', 'counter_offer'
   const [selectedWeek, setSelectedWeek] = useState(cashFlowWeeks[3]); // Focus on Week 4 dip by default
@@ -61,13 +64,23 @@ export default function DashboardView({
 
   const activeCashFlowWeeks = getScenarioWeeks();
   const maxBalance = Math.max(...activeCashFlowWeeks.map(w => w.balance), 12000);
+  const isPhone = deviceMode === 'smartphone';
   const readinessOrder = ['profitability', 'records', 'reliability'];
   const visibleChecks = readinessOrder
     .map((key) => checksData.find((check) => check.key === key))
     .filter(Boolean);
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
+    <div className="relative w-full max-w-full min-w-0 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
+      <button
+        type="button"
+        onClick={onOpenTrustQr}
+        aria-label="Show business QR code"
+        title="Show business QR code"
+        className="sticky top-[calc(100%-3.75rem)] z-30 -mb-12 ml-auto flex h-11 w-11 items-center justify-center rounded-full border border-emerald-300/60 bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-950/40 transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+      >
+        <QrCode className="h-5 w-5" />
+      </button>
       {/* Clean, Modern Header Bar */}
       <div className="flex w-full flex-col gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
@@ -121,7 +134,7 @@ export default function DashboardView({
       </div>
 
       {/* Primary Financial Snapshot Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${deviceMode === 'desktop' ? 'lg:grid-cols-4' : ''}`}>
         {/* Total Working Liquidity */}
         <div className="min-w-0 p-3 sm:p-4 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition-colors flex flex-col justify-between">
           <div>
@@ -287,8 +300,11 @@ export default function DashboardView({
 
         {/* Clean Interactive 13-Week Chart */}
         <div className="pt-1 min-w-0">
-          <div className="w-full max-w-full overflow-x-auto rounded-xl bg-slate-950 border border-slate-800/80">
-          <div className="min-w-max h-56 sm:h-64 flex items-end gap-1 sm:gap-2 px-3 sm:px-4 py-5">
+          <div className={`w-full max-w-full rounded-xl bg-slate-950 border border-slate-800/80 ${isPhone ? '' : 'overflow-x-auto'}`}>
+          <div className={isPhone
+            ? 'grid grid-cols-[repeat(13,minmax(0,1fr))] items-end gap-x-0.5 px-1.5 py-3'
+            : 'min-w-max h-56 sm:h-64 flex items-end gap-1 sm:gap-2 px-3 sm:px-4 py-5'
+          }>
             {activeCashFlowWeeks.map((week) => {
               const heightPercent = Math.max(8, Math.round((week.balance / maxBalance) * 100));
               const isSelected = selectedWeek.week === week.week;
@@ -302,17 +318,19 @@ export default function DashboardView({
                     setSelectedWeek(week);
                     sounds.playPosTap();
                   }}
-                  className="w-10 sm:w-12 flex-none flex flex-col items-center justify-end h-full group cursor-pointer"
+                  className={`flex flex-col items-center justify-end group cursor-pointer ${isPhone ? 'min-w-0 h-24' : 'w-10 sm:w-12 flex-none h-full'}`}
                 >
                   {/* Tooltip value */}
-                  <span className={`text-[8px] sm:text-[10px] font-mono mb-1 transition-opacity ${isSelected ? 'opacity-100 font-bold text-white' : 'opacity-60 group-hover:opacity-100 text-slate-400'}`}>
-                    R{Math.round(week.balance / 1000)}k
-                  </span>
+                  {!isPhone && (
+                    <span className={`text-[8px] sm:text-[10px] font-mono mb-1 transition-opacity ${isSelected ? 'opacity-100 font-bold text-white' : 'opacity-60 group-hover:opacity-100 text-slate-400'}`}>
+                      R{Math.round(week.balance / 1000)}k
+                    </span>
+                  )}
 
                   {/* Vertical bar */}
-                  <div className="w-full relative flex items-end justify-center h-32 sm:h-40 bg-slate-900/60 rounded-t-lg overflow-hidden border border-slate-800/50">
+                  <div className={`${isPhone ? 'w-2 h-16' : 'w-full h-32 sm:h-40'} relative flex items-end justify-center bg-slate-900/60 rounded-t-lg overflow-hidden border border-slate-800/50`}>
                     <div 
-                      className="absolute left-0 right-0 border-b border-dashed border-rose-500/30 pointer-events-none"
+                      className={`absolute left-0 right-0 border-b border-dashed border-rose-500/30 pointer-events-none ${isPhone ? 'hidden' : ''}`}
                       style={{ bottom: `${(500 / maxBalance) * 100}%` }}
                     />
 
@@ -326,7 +344,7 @@ export default function DashboardView({
                       } ${isSelected ? 'ring-2 ring-white ring-offset-1 ring-offset-slate-900' : ''}`}
                       style={{ height: `${heightPercent}%` }}
                     >
-                      {isDanger && (
+                      {isDanger && !isPhone && (
                         <div className="absolute top-0.5 inset-x-0 flex justify-center">
                           <AlertTriangle className="w-2.5 h-2.5 text-white" />
                         </div>
@@ -335,9 +353,9 @@ export default function DashboardView({
                   </div>
 
                   {/* Week label */}
-                  <div className={`mt-1.5 text-center text-[9px] sm:text-[10px] font-medium leading-tight ${isSelected ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
+                  <div className={`mt-1.5 text-center ${isPhone ? 'text-[8px]' : 'text-[9px] sm:text-[10px]'} font-medium leading-tight ${isSelected ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
                     {week.week.split(' ')[0]}
-                    {week.dip && (
+                    {week.dip && !isPhone && (
                       <span className="block text-[7px] sm:text-[8px] text-rose-400 font-bold">DIP</span>
                     )}
                   </div>

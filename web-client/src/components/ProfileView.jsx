@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ArrowLeft,
   Building2,
   KeyRound,
   Monitor,
@@ -28,8 +29,11 @@ export default function ProfileView({
   onToggleSound,
   deviceMode,
   onSelectDeviceMode,
-  onOpenApiKeys
+  onOpenApiKeys,
+  section = 'profile',
+  onBack
 }) {
+  const isOverview = section === 'profile';
   const accountDetails = [
     { label: 'Account owner', value: currentProfile.owner },
     { label: 'Contact number', value: currentProfile.phone },
@@ -39,15 +43,36 @@ export default function ProfileView({
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-5 sm:space-y-7 pb-28 sm:pb-24 md:pb-8">
-      <header className="pb-4 border-b border-slate-800">
-        <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Business profile</span>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-100 tracking-tight mt-1">Profile</h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-3xl">
-          Manage funding, trust information, account details, and the application preferences available for this dashboard.
-        </p>
-      </header>
+      {isOverview ? (
+        <header className="pb-4 border-b border-slate-800">
+          <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Business profile</span>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-100 tracking-tight mt-1">Profile</h1>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-3xl">
+            Manage funding, trust information, account details, and the application preferences available for this dashboard.
+          </p>
+        </header>
+      ) : (
+        <header className="flex items-center gap-3 border-b border-slate-800 pb-4">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to Menu"
+            className="p-2 -ml-2 rounded-lg text-slate-300 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-xl font-bold text-slate-100">
+            {{
+              'profile-funding': 'Township Working Capital',
+              'profile-trust': 'Market Linker & Trust Badge',
+              'profile-account': 'User Account Settings',
+              'profile-settings': 'Application Settings'
+            }[section]}
+          </h1>
+        </header>
+      )}
 
-      <nav aria-label="Profile sections" className="flex gap-2 overflow-x-auto pb-1">
+      {isOverview && <nav aria-label="Profile sections" className="flex gap-2 overflow-x-auto pb-1">
         {[
           ['profile-funding', 'Funding'],
           ['profile-trust', 'Trust'],
@@ -62,9 +87,9 @@ export default function ProfileView({
             {label}
           </a>
         ))}
-      </nav>
+      </nav>}
 
-      <section id="profile-funding" className="scroll-mt-4 min-w-0">
+      {(isOverview || section === 'profile-funding') && <section id="profile-funding" className="scroll-mt-4 min-w-0">
         <FundingView
           fundingOffers={fundingOffers}
           readinessScore={readinessScore}
@@ -72,13 +97,13 @@ export default function ProfileView({
           loanDisbursed={loanDisbursed}
           currentProfile={currentProfile}
         />
-      </section>
+      </section>}
 
-      <section id="profile-trust" className="scroll-mt-4 min-w-0">
+      {(isOverview || section === 'profile-trust') && <section id="profile-trust" className="scroll-mt-4 min-w-0">
         <MarketLinkerView currentProfile={currentProfile} onOpenReport={onOpenReport} />
-      </section>
+      </section>}
 
-      <section id="profile-account" className="scroll-mt-4 p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 min-w-0">
+      {(isOverview || section === 'profile-account') && <section id="profile-account" className="scroll-mt-4 p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 min-w-0">
         <div className="flex items-start gap-3 pb-3 border-b border-slate-800">
           <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400"><Building2 className="w-5 h-5" /></div>
           <div className="min-w-0">
@@ -96,9 +121,9 @@ export default function ProfileView({
             </div>
           ))}
         </dl>
-      </section>
+      </section>}
 
-      <section id="profile-settings" className="scroll-mt-4 p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 min-w-0">
+      {(isOverview || section === 'profile-settings') && <section id="profile-settings" className="scroll-mt-4 p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 min-w-0">
         <div className="pb-3 border-b border-slate-800">
           <h2 className="text-sm sm:text-base font-bold text-slate-100">Application Settings</h2>
           <p className="text-[11px] text-slate-400 mt-0.5">Existing dashboard preferences and integration controls.</p>
@@ -168,7 +193,7 @@ export default function ProfileView({
             </button>
           </div>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

@@ -129,7 +129,7 @@ export default function FundingView({
       </div>
 
       {/* Pre-Approved Micro-Loans Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {fundingOffers.map((offer) => {
           const isPreApproved = offer.status === 'PRE_APPROVED';
           const isSelected = selectedOffer.id === offer.id;
