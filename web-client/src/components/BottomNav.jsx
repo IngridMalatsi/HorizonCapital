@@ -1,30 +1,30 @@
 import React from 'react';
 import { 
   LayoutDashboard, 
-  MessageSquareCheck, 
   Wallet, 
-  CreditCard, 
-  Coins, 
-  BadgeCheck 
+  MessageSquareCheck,
+  Menu as MenuIcon
 } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 
-export default function BottomNav({ activeTab, onSelectTab, pendingRiskCount }) {
+export default function BottomNav({ activeTab, onSelectTab }) {
   const navItems = [
-    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-    { id: 'order-intake', label: 'WhatsApp', icon: MessageSquareCheck, badge: pendingRiskCount > 0 ? pendingRiskCount : null },
-    { id: 'ledger', label: 'Ledger', icon: Wallet },
-    { id: 'micro-pos', label: 'SoftPOS', icon: CreditCard },
-    { id: 'funding', label: 'Funding', icon: Coins },
-    { id: 'market-linker', label: 'Trust', icon: BadgeCheck },
+    { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'ledger', label: 'Page', icon: Wallet },
+    { id: 'order-intake', label: 'Page', icon: MessageSquareCheck },
+    { id: 'menu', label: 'Menu', icon: MenuIcon },
   ];
+  const accountScreens = ['menu', 'settings', 'user-profile', 'account-settings', 'integrations', 'appearance', 'profile'];
+  const currentTab = accountScreens.includes(activeTab) || activeTab.startsWith('unavailable:')
+    ? 'menu'
+    : activeTab;
 
   return (
     <nav className="sticky bottom-0 left-0 right-0 z-30 w-full bg-slate-900/95 backdrop-blur-md border-t border-slate-800/90 text-slate-400 px-1 py-1 shadow-2xl shrink-0 select-none">
-      <div className="max-w-lg mx-auto grid grid-cols-6 gap-0.5">
+      <div className="max-w-lg mx-auto grid grid-cols-5 gap-0.5">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeTab === item.id;
+          const isActive = currentTab === item.id;
           return (
             <button
               key={item.id}

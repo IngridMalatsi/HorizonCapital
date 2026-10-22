@@ -4,8 +4,7 @@ import {
   MessageSquareCheck, 
   Wallet, 
   CreditCard, 
-  Coins, 
-  BadgeCheck, 
+  UserRound,
   ShieldCheck, 
   ChevronRight, 
   PlusCircle, 
@@ -53,17 +52,10 @@ export default function Sidebar({
       icon: CreditCard,
     },
     {
-      id: 'funding',
-      label: 'Scorecard & Funding',
-      subtitle: 'R5,000 Pre-Approved Credit',
-      icon: Coins,
-      tag: 'Unlocked'
-    },
-    {
-      id: 'market-linker',
-      label: 'Market Linker & Trust',
-      subtitle: 'CIPC / SARS Trust Badge & ESD',
-      icon: BadgeCheck,
+      id: 'profile',
+      label: 'Profile',
+      subtitle: 'Funding, Trust & Settings',
+      icon: UserRound,
     },
   ];
 

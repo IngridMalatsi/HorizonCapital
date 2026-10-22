@@ -8,22 +8,14 @@ import {
   Copy, 
   Check, 
   Star, 
-  ExternalLink, 
   QrCode, 
-  Sparkles, 
-  Award, 
-  Download,
   CheckCircle2,
-  TrendingUp,
-  MapPin,
-  Phone,
   FileText
 } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 
 export default function MarketLinkerView({
   currentProfile,
-  readinessScore,
   onOpenReport
 }) {
   // =========================================================================
@@ -43,12 +35,12 @@ export default function MarketLinkerView({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
+    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-6">
       {/* Clean, Modern Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-slate-800">
+      <div className="flex w-full flex-col items-stretch gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
             <span className="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
               Verified Digital Identity & Trust
             </span>
@@ -61,10 +53,10 @@ export default function MarketLinkerView({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex w-full flex-wrap gap-2">
           <button
             onClick={onOpenReport}
-            className="flex-1 sm:flex-none px-3 sm:px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+            className="min-w-0 flex-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Generate Funder PDF</span>
@@ -73,33 +65,21 @@ export default function MarketLinkerView({
       </div>
 
       {/* Main Grid: Left = Verified Profile Dossier | Right = Shareable Trust Badge */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 2xl:grid-cols-12 gap-4 sm:gap-6">
         {/* Left Column: Aggregated Compliance Credentials */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="2xl:col-span-7 space-y-4">
           <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-emerald-500/20 border border-purple-500/30 flex items-center justify-center text-3xl shadow-inner">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 border border-cyan-500/30 flex items-center justify-center text-3xl shadow-inner">
                   {currentProfile.avatar}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-base font-bold text-slate-100 flex items-center gap-1.5">
                     {currentProfile.name}
                     <BadgeCheck className="w-5 h-5 text-emerald-400 fill-emerald-400/20" />
                   </h2>
-                  <div className="text-xs text-slate-400">{currentProfile.type}</div>
-                  <div className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3 h-3" />
-                    {currentProfile.location}
-                  </div>
                 </div>
-              </div>
-
-              <div className="text-right">
-                <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-semibold">Readiness Score</span>
-                <span className="text-xl font-black text-emerald-400 font-mono">
-                  {readinessScore}/100
-                </span>
               </div>
             </div>
 
@@ -178,21 +158,11 @@ export default function MarketLinkerView({
               </div>
             </div>
 
-            {/* ESD Program Placement */}
-            <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-800/50 text-xs text-purple-200 space-y-1">
-              <div className="font-bold flex items-center gap-1.5 text-purple-300">
-                <Award className="w-4 h-4 text-purple-400" />
-                <span>Enterprise & Supplier Development (ESD) Status</span>
-              </div>
-              <p className="text-purple-300/90 leading-relaxed text-[11px]">
-                {currentProfile.esdStatus}. Pre-vetted under B-BBEE Procurement Codes for corporate supplier diversity contracts.
-              </p>
-            </div>
           </div>
         </div>
 
         {/* Right Column: Shareable Digital Trust Badge (Concept 3) */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="2xl:col-span-5 space-y-4">
           <div className="p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/40 shadow-2xl space-y-4 text-center">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
@@ -202,7 +172,7 @@ export default function MarketLinkerView({
             </div>
 
             {/* Trust Badge Display */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/80 via-slate-900 to-purple-950/60 border-2 border-emerald-500/60 shadow-xl space-y-3 relative overflow-hidden">
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-950/80 via-slate-900 to-cyan-950/60 border-2 border-emerald-500/60 shadow-xl space-y-3 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
 
               <div className="w-14 h-14 rounded-2xl bg-slate-900/90 border border-emerald-500/50 mx-auto flex items-center justify-center text-3xl shadow-lg">
@@ -216,9 +186,6 @@ export default function MarketLinkerView({
                 </h3>
                 <div className="text-xs text-emerald-400 font-semibold mt-0.5">
                   HorizonCapital Verified Supplier
-                </div>
-                <div className="text-[11px] text-slate-400 font-mono">
-                  Soweto Cluster • Gauteng, South Africa
                 </div>
               </div>
 

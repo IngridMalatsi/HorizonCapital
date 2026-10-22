@@ -22,6 +22,106 @@ import {
 import confetti from 'canvas-confetti';
 import { sounds } from '../utils/soundEffects';
 
+function getDailyTransactionTotals(transactions) {
+  const totalsByDate = new Map();
+
+  transactions.forEach((transaction) => {
+    const date = transaction.date?.split(' ')[0];
+    if (!date || !Number.isFinite(Date.parse(`${date}T00:00:00`))) return;
+
+    const totals = totalsByDate.get(date) || { date, income: 0, expenses: 0 };
+    if (transaction.type === 'INCOME') {
+      totals.income += Math.abs(transaction.amount);
+    } else if (transaction.type === 'EXPENSE') {
+      totals.expenses += Math.abs(transaction.amount);
+    }
+    totalsByDate.set(date, totals);
+  });
+
+  return [...totalsByDate.values()].sort((first, second) => first.date.localeCompare(second.date));
+}
+
+function IncomeExpensesChart({ transactions }) {
+  const dailyTotals = getDailyTransactionTotals(transactions);
+
+  if (dailyTotals.length === 0) {
+    return (
+      <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+        <h2 className="text-sm font-bold text-slate-100">Income &amp; Expenses</h2>
+        <p className="text-xs text-slate-400 mt-2">No dated income or expense transactions are available to chart yet.</p>
+      </div>
+    );
+  }
+
+  const width = 760;
+  const height = 250;
+  const padding = { top: 18, right: 18, bottom: 42, left: 68 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const maximum = Math.max(1, ...dailyTotals.flatMap(({ income, expenses }) => [income, expenses]));
+  const x = (index) => padding.left + (dailyTotals.length === 1 ? plotWidth / 2 : index * plotWidth / (dailyTotals.length - 1));
+  const y = (value) => padding.top + plotHeight - (value / maximum) * plotHeight;
+  const incomePath = dailyTotals.map((entry, index) => `${index === 0 ? 'M' : 'L'} ${x(index)} ${y(entry.income)}`).join(' ');
+  const expensePath = dailyTotals.map((entry, index) => `${index === 0 ? 'M' : 'L'} ${x(index)} ${y(entry.expenses)}`).join(' ');
+  const labelInterval = Math.max(1, Math.ceil(dailyTotals.length / 6));
+  const formatDate = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' });
+  const formatAmount = (amount) => `R${Math.round(amount).toLocaleString('en-ZA')}`;
+
+  return (
+    <section className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 min-w-0" aria-labelledby="ledger-chart-title">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 id="ledger-chart-title" className="text-sm sm:text-base font-bold text-slate-100">Income &amp; Expenses</h2>
+          <p className="text-[11px] text-slate-400 mt-0.5">Recorded totals by transaction date</p>
+        </div>
+        <div className="flex items-center gap-4 text-[11px]" aria-label="Chart legend">
+          <span className="flex items-center gap-1.5 text-slate-300"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />Income</span>
+          <span className="flex items-center gap-1.5 text-slate-300"><span className="w-2.5 h-2.5 rounded-full bg-rose-400" />Expenses</span>
+        </div>
+      </div>
+
+      <div className="w-full overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full min-w-[520px] h-auto"
+          role="img"
+          aria-label="Line chart showing daily income and expenses from ledger transactions"
+        >
+          {[0, 1, 2, 3].map((step) => {
+            const value = maximum * (1 - step / 3);
+            const position = padding.top + plotHeight * step / 3;
+            return (
+              <g key={step}>
+                <line x1={padding.left} x2={width - padding.right} y1={position} y2={position} stroke="#334155" strokeDasharray="3 5" />
+                <text x={padding.left - 10} y={position + 4} textAnchor="end" fill="#94a3b8" fontSize="11">{formatAmount(value)}</text>
+              </g>
+            );
+          })}
+
+          <text x="14" y={padding.top + plotHeight / 2} fill="#94a3b8" fontSize="11" textAnchor="middle" transform={`rotate(-90 14 ${padding.top + plotHeight / 2})`}>Amount (ZAR)</text>
+          <path d={incomePath} fill="none" stroke="#34d399" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          <path d={expensePath} fill="none" stroke="#fb7185" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+
+          {dailyTotals.map((entry, index) => (
+            <g key={entry.date}>
+              <circle cx={x(index)} cy={y(entry.income)} r="4" fill="#34d399" stroke="#0f172a" strokeWidth="2">
+                <title>{`${formatDate(entry.date)} income: ${formatAmount(entry.income)}`}</title>
+              </circle>
+              <circle cx={x(index)} cy={y(entry.expenses)} r="4" fill="#fb7185" stroke="#0f172a" strokeWidth="2">
+                <title>{`${formatDate(entry.date)} expenses: ${formatAmount(entry.expenses)}`}</title>
+              </circle>
+              {index % labelInterval === 0 && (
+                <text x={x(index)} y={height - 13} fill="#94a3b8" fontSize="11" textAnchor="middle">{formatDate(entry.date)}</text>
+              )}
+            </g>
+          ))}
+          <text x={padding.left + plotWidth / 2} y={height - 1} fill="#94a3b8" fontSize="11" textAnchor="middle">Transaction date</text>
+        </svg>
+      </div>
+    </section>
+  );
+}
+
 export default function LedgerView({
   transactions,
   cashInDrawer,
@@ -128,9 +228,9 @@ export default function LedgerView({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
+    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
       {/* Clean, Modern Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-slate-800">
+      <div className="flex w-full flex-col items-stretch gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
@@ -146,14 +246,14 @@ export default function LedgerView({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap gap-2 w-full">
           {/* Snap-to-record button */}
           <button
             onClick={() => {
               setSnapModalOpen(true);
               sounds.playPosTap();
             }}
-            className="flex-1 sm:flex-none px-3 sm:px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
+            className="min-w-0 flex-1 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
           >
             <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Snap Receipt</span>
@@ -165,7 +265,7 @@ export default function LedgerView({
               setAddModalOpen(true);
               sounds.playPosTap();
             }}
-            className="flex-1 sm:flex-none px-3 sm:px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+            className="min-w-0 flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors active:scale-95"
           >
             <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
             <span>Add Entry</span>
@@ -174,20 +274,20 @@ export default function LedgerView({
       </div>
 
       {/* Cash vs. Digital Toggle Bar (The Township Tech Twist) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Cash in Drawer Card */}
         <div 
           onClick={() => {
             setChannelFilter(channelFilter === 'CASH' ? 'ALL' : 'CASH');
             sounds.playPosTap();
           }}
-          className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+          className={`min-w-0 p-4 rounded-2xl border cursor-pointer transition-all ${
             channelFilter === 'CASH'
               ? 'bg-amber-950/40 border-amber-500 shadow-lg shadow-amber-950/50'
               : 'bg-slate-900 border-slate-800 hover:border-slate-700'
           }`}
         >
-          <div className="flex items-center justify-between text-xs mb-1">
+          <div className="flex items-start justify-between gap-2 text-xs mb-1">
             <span className="text-slate-400 font-medium flex items-center gap-1.5">
               <Coins className="w-4 h-4 text-amber-400" />
               Physical Cash in Drawer
@@ -211,13 +311,13 @@ export default function LedgerView({
             setChannelFilter(channelFilter === 'DIGITAL' ? 'ALL' : 'DIGITAL');
             sounds.playPosTap();
           }}
-          className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+          className={`min-w-0 p-4 rounded-2xl border cursor-pointer transition-all ${
             channelFilter === 'DIGITAL'
               ? 'bg-emerald-950/40 border-emerald-500 shadow-lg shadow-emerald-950/50'
               : 'bg-slate-900 border-slate-800 hover:border-slate-700'
           }`}
         >
-          <div className="flex items-center justify-between text-xs mb-1">
+          <div className="flex items-start justify-between gap-2 text-xs mb-1">
             <span className="text-slate-400 font-medium flex items-center gap-1.5">
               <Building className="w-4 h-4 text-emerald-400" />
               Digital Bank (FNB Business)
@@ -241,13 +341,13 @@ export default function LedgerView({
             setChannelFilter('ALL');
             sounds.playPosTap();
           }}
-          className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+          className={`min-w-0 p-4 rounded-2xl border cursor-pointer transition-all ${
             channelFilter === 'ALL'
               ? 'bg-slate-850 border-cyan-500/60 shadow-lg'
               : 'bg-slate-900 border-slate-800 hover:border-slate-700'
           }`}
         >
-          <div className="flex items-center justify-between text-xs mb-1">
+          <div className="flex items-start justify-between gap-2 text-xs mb-1">
             <span className="text-slate-400 font-medium flex items-center gap-1.5">
               <Wallet className="w-4 h-4 text-cyan-400" />
               Consolidated Net Liquidity
@@ -316,7 +416,7 @@ export default function LedgerView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {filteredTransactions.map((tx) => {
+              {filteredTransactions.slice(0, 4).map((tx) => {
                 const isIncome = tx.amount > 0;
                 return (
                   <tr key={tx.id} className="hover:bg-slate-850/60 transition-colors">
@@ -359,8 +459,15 @@ export default function LedgerView({
               No transactions match the selected channel and search filters.
             </div>
           )}
+          {filteredTransactions.length > 4 && (
+            <p className="pt-3 text-center text-[11px] text-slate-400">
+              Showing 4 of {filteredTransactions.length} matching transactions.
+            </p>
+          )}
         </div>
       </div>
+
+      <IncomeExpensesChart transactions={transactions} />
 
       {/* Snap-to-Record OCR Receipt Scanner Modal (Image 2 Concept) */}
       {snapModalOpen && (

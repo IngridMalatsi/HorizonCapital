@@ -17,6 +17,28 @@ import {
 import confetti from 'canvas-confetti';
 import { sounds } from '../utils/soundEffects';
 
+function ExpandableText({ text, previewLength = 48 }) {
+  const [expanded, setExpanded] = useState(false);
+  const needsExpansion = text.length > previewLength;
+  const preview = text.slice(0, previewLength).trimEnd();
+
+  return (
+    <p className="text-xs text-slate-400 mt-1 leading-relaxed break-words">
+      {needsExpansion && !expanded ? preview : text}
+      {needsExpansion && (
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          aria-expanded={expanded}
+          className="ml-1 text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 rounded-sm"
+        >
+          {expanded ? 'Read less' : '…read more'}
+        </button>
+      )}
+    </p>
+  );
+}
+
 export default function FundingView({
   fundingOffers,
   readinessScore,
@@ -37,9 +59,9 @@ export default function FundingView({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
+    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-6">
       {/* Clean, Modern Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-slate-800">
+      <div className="flex w-full flex-col items-stretch gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
@@ -55,7 +77,7 @@ export default function FundingView({
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/60 border border-amber-800/80 text-xs font-semibold text-amber-300 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/60 border border-amber-800/80 text-xs font-semibold text-amber-300 self-start">
           <Award className="w-4 h-4 text-amber-400" />
           <span>Funder Status: 92% Complete</span>
         </div>
@@ -107,7 +129,7 @@ export default function FundingView({
       </div>
 
       {/* Pre-Approved Micro-Loans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {fundingOffers.map((offer) => {
           const isPreApproved = offer.status === 'PRE_APPROVED';
           const isSelected = selectedOffer.id === offer.id;
@@ -140,9 +162,7 @@ export default function FundingView({
                 <h3 className="text-base font-bold text-slate-100">
                   {offer.title}
                 </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  {offer.purpose}
-                </p>
+                <ExpandableText text={offer.purpose} />
 
                 {/* Amount display */}
                 <div className="my-4 p-4 rounded-xl bg-slate-950 border border-slate-800 text-center">

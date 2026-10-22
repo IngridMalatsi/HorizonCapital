@@ -99,9 +99,9 @@ export default function OrderIntakeView({
   const isSafeRisk = extracted.riskLevel === 'SAFE';
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
+    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
       {/* Clean, Modern Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+      <div className="flex w-full flex-col items-stretch gap-3 pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
@@ -115,28 +115,45 @@ export default function OrderIntakeView({
           </p>
         </div>
 
-        {/* Quick Sample Presets Picker */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {presets.map((preset) => (
-            <button
-              key={preset.id}
-              onClick={() => handleSelectPreset(preset)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                preset.id === currentPresetId
-                  ? 'bg-slate-800 text-emerald-400 border border-emerald-700/60 font-semibold'
-                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-800'
-              }`}
-            >
-              {preset.id === 'mbali-muffins' ? '100 Muffins (High Risk)' : preset.title.split('(')[0].trim()}
-            </button>
-          ))}
-        </div>
       </div>
 
+      <section className="w-full min-w-0 p-4 sm:p-5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3" aria-labelledby="whatsapp-orders-title">
+        <div className="pb-2 border-b border-slate-800/80">
+          <h2 id="whatsapp-orders-title" className="text-sm font-semibold text-slate-200">WhatsApp Orders</h2>
+          <p className="text-[11px] text-slate-400 mt-0.5">Choose an order to review its message and cash-flow risk.</p>
+        </div>
+        <ul className="space-y-2">
+          {presets.map((preset) => {
+            const order = preset.extractedData;
+            const isSelected = preset.id === currentPresetId;
+
+            return (
+              <li key={preset.id} className={`min-w-0 p-3 rounded-xl bg-slate-950 border text-xs transition-colors ${
+                isSelected ? 'border-emerald-700/70' : 'border-slate-800'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPreset(preset)}
+                  aria-pressed={isSelected}
+                  className="w-full min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 rounded"
+                >
+                  <span className="block text-slate-200 font-semibold break-words">
+                    <span className="text-emerald-400 mr-2" aria-hidden="true">•</span>{order.item}
+                  </span>
+                  <span className="block mt-1 pl-4 text-[11px] text-slate-400 break-words">
+                    {order.client} · {order.quantity} ordered · Due {order.deadline}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
       {/* Main Grid: Left = WhatsApp Input Interface | Right = Risk & Decision Engine */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-4">
         {/* Left Column: Screen 2 (Zero-Friction WhatsApp Interface) */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="space-y-4">
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
               <div className="flex items-center gap-2.5">
@@ -244,7 +261,7 @@ export default function OrderIntakeView({
         </div>
 
         {/* Right Column: Intelligence, Risk Assessment & Counter-Offer */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="space-y-4">
           {/* Intelligence & Risk Analysis */}
           <div className="p-4 sm:p-5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">

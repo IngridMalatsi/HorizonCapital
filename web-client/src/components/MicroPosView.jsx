@@ -18,7 +18,7 @@ import { sounds } from '../utils/soundEffects';
 
 export default function MicroPosView({ onProcessPayment, currentProfile }) {
   const [amountStr, setAmountStr] = useState('85.00');
-  const [paymentMode, setPaymentMode] = useState('NFC'); // 'NFC', 'QR', 'CASH'
+  const [paymentMode, setPaymentMode] = useState('NFC'); // 'NFC', 'QR'
   const [posState, setPosState] = useState('IDLE'); // 'IDLE', 'WAITING_TAP', 'AUTHORIZING', 'APPROVED'
   const [lastReceipt, setLastReceipt] = useState(null);
 
@@ -79,7 +79,7 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
         date: new Date().toLocaleDateString('en-ZA', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         merchant: currentProfile.name,
         amount: amt,
-        cardScheme: 'Visa Contactless (NFC)',
+        cardScheme: paymentMode === 'NFC' ? 'Visa Contactless (NFC)' : 'Scan to Pay (QR)',
         authCode: `AUTH-${Math.floor(1000 + Math.random() * 9000)}`,
         terminalId: 'SOFT-POS-SOWETO-01'
       };
@@ -99,9 +99,9 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
+    <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
       {/* Clean, Modern Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3 sm:pb-4 border-b border-slate-800">
+      <div className="flex w-full flex-col items-stretch gap-3 pb-3 sm:pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
@@ -118,19 +118,19 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
         </div>
 
         {/* SoftPOS Hardware-Free Badge */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/60 border border-cyan-800/80 text-xs font-semibold text-cyan-300 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/60 border border-cyan-800/80 text-xs font-semibold text-cyan-300 self-start">
           <Wifi className="w-3.5 h-3.5 text-cyan-400" />
           <span>Zero POS Hardware Rental</span>
         </div>
       </div>
 
       {/* Main Terminal Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-4">
         {/* Left Column: SoftPOS Keypad Terminal */}
-        <div className="md:col-span-7 space-y-4">
+        <div className="space-y-4">
           <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl">
             {/* Payment Mode Selector */}
-            <div className="grid grid-cols-3 gap-2 mb-4 p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+            <div className="grid grid-cols-2 gap-2 mb-4 p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs">
               <button
                 onClick={() => {
                   setPaymentMode('NFC');
@@ -143,7 +143,7 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
                 }`}
               >
                 <Wifi className="w-3.5 h-3.5 rotate-90" />
-                <span>NFC Tap</span>
+                <span>NFC Tap to Pay</span>
               </button>
               <button
                 onClick={() => {
@@ -157,21 +157,7 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
                 }`}
               >
                 <QrCode className="w-3.5 h-3.5" />
-                <span>SnapScan / QR</span>
-              </button>
-              <button
-                onClick={() => {
-                  setPaymentMode('CASH');
-                  sounds.playPosTap();
-                }}
-                className={`py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors ${
-                  paymentMode === 'CASH'
-                    ? 'bg-cyan-600 text-white shadow'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span>Cash Register</span>
+                <span>Scan to Pay</span>
               </button>
             </div>
 
@@ -227,25 +213,27 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
               className="w-full mt-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-cyan-950/40 active:scale-98 transition-all disabled:opacity-50"
             >
               <Wifi className="w-4 h-4 rotate-90" />
-              <span>Charge R {amountStr} via SoftPOS</span>
+              <span>{paymentMode === 'NFC' ? `Charge R ${amountStr} via NFC` : `Create R ${amountStr} Scan to Pay request`}</span>
             </button>
           </div>
         </div>
 
         {/* Right Column: Interactive Phone SoftPOS NFC Reader & Approval Slip */}
-        <div className="md:col-span-5 space-y-4">
-          <div className="p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-cyan-500/30 shadow-2xl min-h-[420px] flex flex-col justify-between">
+        <div className="space-y-4">
+          <div className="p-5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-cyan-500/30 shadow-2xl min-h-[240px] flex flex-col justify-between">
             {posState === 'IDLE' && (
               <div className="my-auto text-center space-y-4 py-8">
                 <div className="w-20 h-20 rounded-full bg-cyan-500/10 border-2 border-dashed border-cyan-500/40 mx-auto flex items-center justify-center text-cyan-400">
-                  <Smartphone className="w-10 h-10" />
+                  {paymentMode === 'NFC' ? <Smartphone className="w-10 h-10" /> : <QrCode className="w-10 h-10" />}
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-200">
                     Ready for Transaction
                   </h3>
                   <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">
-                    Enter the charge amount on the left keypad and press Charge to initiate the NFC contactless sensor.
+                    {paymentMode === 'NFC'
+                      ? 'Enter an amount and start a contactless NFC payment.'
+                      : 'Enter an amount to prepare a Scan to Pay request.'}
                   </p>
                 </div>
               </div>
@@ -253,24 +241,29 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
 
             {posState === 'WAITING_TAP' && (
               <div className="my-auto text-center space-y-5 py-6 animate-in fade-in duration-200">
-                {/* Contactless pulsating wave visual */}
-                <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full bg-cyan-500/20 animate-ping" />
-                  <div className="absolute inset-2 rounded-full bg-cyan-500/30 animate-pulse" />
-                  <div className="relative w-20 h-20 rounded-full bg-cyan-600 flex items-center justify-center text-white shadow-xl shadow-cyan-500/40">
-                    <Wifi className="w-10 h-10 rotate-90" />
+                {paymentMode === 'NFC' ? (
+                  <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-cyan-500/20 animate-ping" />
+                    <div className="absolute inset-2 rounded-full bg-cyan-500/30 animate-pulse" />
+                    <div className="relative w-20 h-20 rounded-full bg-cyan-600 flex items-center justify-center text-white shadow-xl shadow-cyan-500/40">
+                      <Wifi className="w-10 h-10 rotate-90" />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="w-28 h-28 mx-auto rounded-2xl bg-white flex items-center justify-center text-slate-950 shadow-xl">
+                    <QrCode className="w-20 h-20" aria-hidden="true" />
+                  </div>
+                )}
 
                 <div>
                   <div className="text-xl font-black text-slate-100 font-mono">
                     R {amountStr}
                   </div>
                   <div className="text-xs font-bold text-cyan-300 mt-1">
-                    Tap Customer Card or Phone on Screen Back
+                    {paymentMode === 'NFC' ? 'Tap Customer Card or Phone on Screen' : 'Customer Scan to Pay request'}
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5">
-                    NFC Sensor Active • Visa / Mastercard / Apple Pay
+                    {paymentMode === 'NFC' ? 'NFC Sensor Active • Visa / Mastercard / Apple Pay' : 'Scan request ready • awaiting customer confirmation'}
                   </div>
                 </div>
 
@@ -280,7 +273,7 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-2 mx-auto shadow-lg shadow-cyan-950/60 active:scale-95 transition-all"
                 >
                   <CreditCard className="w-4 h-4" />
-                  <span>[Tap Card Here to Authorize]</span>
+                  <span>{paymentMode === 'NFC' ? '[Tap Card Here to Authorize]' : '[Simulate Customer Scan]'}</span>
                 </button>
               </div>
             )}

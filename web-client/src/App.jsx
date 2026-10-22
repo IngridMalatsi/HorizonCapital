@@ -6,8 +6,8 @@ import DashboardView from './components/DashboardView';
 import OrderIntakeView from './components/OrderIntakeView';
 import LedgerView from './components/LedgerView';
 import MicroPosView from './components/MicroPosView';
-import FundingView from './components/FundingView';
-import MarketLinkerView from './components/MarketLinkerView';
+import ProfileView from './components/ProfileView';
+import AccountFlowView from './components/AccountFlowView';
 import FunderReportModal from './components/FunderReportModal';
 import ApiKeysModal from './components/ApiKeysModal';
 import DeviceSimulatorFrame from './components/DeviceSimulatorFrame';
@@ -29,6 +29,7 @@ export default function App() {
   
   // Navigation & View Mode State
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSignedIn, setIsSignedIn] = useState(true);
   const [deviceMode, setDeviceMode] = useState('desktop'); // 'desktop', 'smartphone', 'tablet'
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -72,6 +73,23 @@ export default function App() {
   const handleSelectDeviceMode = (mode) => {
     sounds.playPosTap();
     setDeviceMode(mode);
+  };
+
+  const handleSignIn = () => {
+    setIsSignedIn(true);
+    setActiveTab('dashboard');
+  };
+
+  const handleSignOut = () => {
+    setIsSignedIn(false);
+    setActiveTab('signin');
+  };
+
+  const handleNavigateToFunding = () => {
+    setActiveTab('profile');
+    requestAnimationFrame(() => {
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   // Accept Counter-Offer Simulation (Screens 3 & 4)
@@ -178,23 +196,25 @@ export default function App() {
       onSelectDeviceMode={handleSelectDeviceMode}
     >
       {/* Top Navbar */}
-      <Navbar
-        currentProfile={currentProfile}
-        onSelectProfile={handleSelectProfile}
-        profiles={BUSINESS_PROFILES}
-        deviceMode={deviceMode}
-        onSelectDeviceMode={handleSelectDeviceMode}
-        soundEnabled={soundEnabled}
-        onToggleSound={handleToggleSound}
-        onOpenReport={() => setFunderReportOpen(true)}
-        onOpenApiKeys={() => setApiKeysModalOpen(true)}
-        readinessScore={readinessScore}
-      />
+      {isSignedIn && (
+        <Navbar
+          currentProfile={currentProfile}
+          onSelectProfile={handleSelectProfile}
+          profiles={BUSINESS_PROFILES}
+          deviceMode={deviceMode}
+          onSelectDeviceMode={handleSelectDeviceMode}
+          soundEnabled={soundEnabled}
+          onToggleSound={handleToggleSound}
+          onOpenReport={() => setFunderReportOpen(true)}
+          onOpenApiKeys={() => setApiKeysModalOpen(true)}
+          readinessScore={readinessScore}
+        />
+      )}
 
       {/* Main Body Layout */}
-      <div className="flex-1 flex w-full min-h-0 overflow-hidden">
+      <div className="flex-1 flex w-full min-w-0 max-w-[100vw] min-h-0 overflow-hidden">
         {/* Desktop Sidebar (Only visible on desktop mode on medium+ screens) */}
-        {deviceMode === 'desktop' && (
+        {isSignedIn && deviceMode === 'desktop' && (
           <Sidebar
             activeTab={activeTab}
             onSelectTab={setActiveTab}
@@ -211,7 +231,7 @@ export default function App() {
         )}
 
         {/* Dynamic Main View Content Area */}
-        <main className="flex-1 max-w-7xl mx-auto w-full px-2.5 sm:px-6 py-3.5 sm:py-6 overflow-y-auto">
+        <main className="flex-1 max-w-7xl mx-auto w-full min-w-0 max-w-[100vw] px-2.5 sm:px-6 py-3.5 sm:py-6 overflow-y-auto overflow-x-hidden">
           {activeTab === 'dashboard' && (
             <DashboardView
               currentProfile={currentProfile}
@@ -221,6 +241,7 @@ export default function App() {
               cashInDrawer={cashInDrawer}
               digitalBankBalance={digitalBankBalance}
               onNavigateTab={setActiveTab}
+              onNavigateFunding={handleNavigateToFunding}
               onSelectWhatsappPreset={(id) => setCurrentPresetId(id)}
               onOpenReport={() => setFunderReportOpen(true)}
             />
@@ -254,34 +275,60 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'funding' && (
-            <FundingView
-              fundingOffers={FUNDING_OFFERS}
+          {activeTab === 'profile' && (
+            <ProfileView
+              currentProfile={currentProfile}
               readinessScore={readinessScore}
+              fundingOffers={FUNDING_OFFERS}
               onDisburseLoan={handleDisburseLoan}
               loanDisbursed={loanDisbursed}
-              currentProfile={currentProfile}
+              onOpenReport={() => setFunderReportOpen(true)}
+              soundEnabled={soundEnabled}
+              onToggleSound={handleToggleSound}
+              deviceMode={deviceMode}
+              onSelectDeviceMode={handleSelectDeviceMode}
+              onOpenApiKeys={() => setApiKeysModalOpen(true)}
             />
           )}
 
-          {activeTab === 'market-linker' && (
-            <MarketLinkerView
-              currentProfile={currentProfile}
-              readinessScore={readinessScore}
-              onOpenReport={() => setFunderReportOpen(true)}
+          {['menu', 'settings', 'user-profile', 'account-settings', 'integrations', 'appearance'].includes(activeTab) && (
+            <AccountFlowView
+              screen={activeTab}
+              onNavigate={setActiveTab}
+              onSignIn={handleSignIn}
+              onLogout={handleSignOut}
+              onOpenIntegrations={() => setApiKeysModalOpen(true)}
+            />
+          )}
+
+          {activeTab === 'signin' && (
+            <AccountFlowView
+              screen="signin"
+              onNavigate={setActiveTab}
+              onSignIn={handleSignIn}
+              onLogout={handleSignOut}
+              onOpenIntegrations={() => setApiKeysModalOpen(true)}
+            />
+          )}
+
+          {activeTab.startsWith('unavailable:') && (
+            <AccountFlowView
+              screen={activeTab}
+              onNavigate={setActiveTab}
+              onSignIn={handleSignIn}
+              onLogout={handleSignOut}
+              onOpenIntegrations={() => setApiKeysModalOpen(true)}
             />
           )}
         </main>
       </div>
 
       {/* Bottom Navigation Bar (Visible on mobile/tablet screens or simulated phone/tablet frames) */}
-      <div className={deviceMode !== 'desktop' ? 'block shrink-0' : 'md:hidden shrink-0'}>
-        <BottomNav
-          activeTab={activeTab}
-          onSelectTab={setActiveTab}
-          pendingRiskCount={orderAccepted ? 0 : 1}
-        />
-      </div>
+      {isSignedIn && !['signin'].includes(activeTab) && (
+        <div className={deviceMode !== 'desktop' ? 'block shrink-0' : 'md:hidden shrink-0'}>
+          <BottomNav activeTab={activeTab} onSelectTab={setActiveTab} />
+        </div>
+      )}
 
       {/* Printable Institutional ESD Funder Report Modal */}
       <FunderReportModal
