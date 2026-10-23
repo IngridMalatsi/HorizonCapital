@@ -94,6 +94,46 @@ export default function App() {
     });
   };
 
+
+  // Keep the Executive Overview's 13-week cash-flow chart in sync with ledger activity.
+  // Use explicit week dates when available; otherwise use the first forecast week.
+  const updateCashFlowForTransaction = (transaction, preferredWeekIndex = null) => {
+    const amount = Number(transaction?.amount) || 0;
+    const transactionDate = String(transaction?.date || '').slice(0, 10);
+    if (!amount) return;
+
+    setCashFlowWeeks((weeks) => {
+      if (!Array.isArray(weeks) || weeks.length === 0) return weeks;
+
+      const matchingIndex = weeks.findIndex((week) => {
+        const start = week.startDate || week.weekStart || week.start || week.date;
+        const end = week.endDate || week.weekEnd || week.end || start;
+        if (!start) return false;
+        const startDay = String(start).slice(0, 10);
+        const endDay = String(end || start).slice(0, 10);
+        return Boolean(transactionDate) && transactionDate >= startDay && transactionDate <= endDay;
+      });
+
+      const index = preferredWeekIndex != null
+        ? Math.min(Math.max(preferredWeekIndex, 0), weeks.length - 1)
+        : matchingIndex >= 0 ? matchingIndex : 0;
+
+      return weeks.map((week, weekIndex) => {
+        if (weekIndex !== index) return week;
+        const inflowDelta = amount > 0 ? amount : 0;
+        const outflowDelta = amount < 0 ? Math.abs(amount) : 0;
+        const nextBalance = (Number(week.balance) || 0) + amount;
+        return {
+          ...week,
+          inflow: (Number(week.inflow) || 0) + inflowDelta,
+          outflow: (Number(week.outflow) || 0) + outflowDelta,
+          balance: nextBalance,
+          ...(nextBalance < 0 ? { status: 'warning' } : {}),
+        };
+      });
+    });
+  };
+
   // Accept Counter-Offer Simulation (Screens 3 & 4)
   const handleAcceptCounterOffer = (preset) => {
     setOrderAccepted(true);
@@ -132,13 +172,8 @@ export default function App() {
     setTransactions(prev => [newTx, ...prev]);
     setDigitalBankBalance(prev => prev + depositAmount);
 
-    // Update Week 4 cashflow balance
-    setCashFlowWeeks(prev => prev.map((w, idx) => {
-      if (idx === 3) {
-        return { ...w, inflow: w.inflow + depositAmount, balance: w.balance + depositAmount, status: 'safe', label: 'Protected with Deposit' };
-      }
-      return w;
-    }));
+    // Keep the existing Week 4 deposit scenario reflected in the forecast graph.
+    updateCashFlowForTransaction(newTx, 3);
   };
 
   // Process SoftPOS payment (Micro-POS)
@@ -158,16 +193,22 @@ export default function App() {
 
     setTransactions(prev => [newTx, ...prev]);
     setDigitalBankBalance(prev => prev + amount);
+    updateCashFlowForTransaction(newTx);
   };
 
   // Add ledger transaction (manual or snap-to-record)
   const handleAddTransaction = (newTx) => {
+    const amount = Number(newTx?.amount) || 0;
     setTransactions(prev => [newTx, ...prev]);
+
     if (newTx.channel === 'CASH') {
-      setCashInDrawer(prev => Math.max(0, prev + newTx.amount));
+      setCashInDrawer(prev => Math.max(0, prev + amount));
     } else {
-      setDigitalBankBalance(prev => Math.max(0, prev + newTx.amount));
+      setDigitalBankBalance(prev => Math.max(0, prev + amount));
     }
+
+    // The Ledger charts derive from transactions; this also updates dashboard cash flow.
+    updateCashFlowForTransaction({ ...newTx, amount });
   };
 
   // Disburse Pre-Approved Loan (Concept 2 Funding)
@@ -189,6 +230,7 @@ export default function App() {
     };
 
     setTransactions(prev => [newTx, ...prev]);
+    updateCashFlowForTransaction(newTx);
     setReadinessScore(prev => Math.min(100, prev + 3));
   };
 
