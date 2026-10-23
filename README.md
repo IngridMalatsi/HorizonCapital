@@ -1,24 +1,24 @@
 # HorizonCapital
 
-HorizonCapital is a digital finance platform designed to help users assess funding readiness, manage capital needs, and securely process transactions through a mobile-first experience. The platform combines a responsive customer interface with a secure backend service layer for real-time financial data, transaction processing, and risk-aware operations.
+HorizonCapital is a mobile-first prototype for business funding readiness, cash-flow review, order intake, and ledger workflows. It includes a responsive web client, an Expo app shell that displays the same web experience, Supabase authentication, and a small Node.js API.
 
 ## Overview
 
-The platform is built to support a seamless user journey from initial assessment to funding decisions and financial management. It helps users:
+The prototype demonstrates how users could:
 
 - evaluate their financial readiness and eligibility
 - view available funding or cash-flow options
 - track money movement and transaction status
 - manage digital order or funding requests
-- access a secure and compliant payment experience across devices
+- explore example order and funding workflows across devices
 
 ## Product Goals
 
 - Deliver a smooth cross-platform experience for smartphone users
 - Simplify financial assessment and decision workflows
-- Provide secure and transparent transaction operations
+- Provide clear transaction and funding workflows
 - Reduce friction in funding and payment processing
-- Support scalable growth with cloud-native infrastructure
+- Establish a shared interface and API foundation for future development
 
 ## Tech Stack
 
@@ -32,28 +32,28 @@ Shared Node.js HTTP API server. The current implemented endpoint reports API hea
 Supabase Auth handles sign-in. Business profiles, ledger entries, and other demo activity are currently held in client memory rather than persisted.
 
 ### Security & Compliance
-End-to-end encryption, built-in fraud protection protocols, and secure API integrations for digital payment gateways.
+This project is a prototype, not a production financial service. Production security, compliance, payment processing, and fraud controls must be implemented and reviewed before handling real financial activity.
 
 ## Core Features
 
 ### 1. Funding Readiness Assessment
-Users can complete a financial assessment to determine eligibility, readiness, and likely funding pathways.
+The prototype demonstrates an example readiness score, assessment flow, cash-flow forecast, and sample funding offers. It does not determine real eligibility.
 
 ### 2. Transaction and Cash Management
-The system supports money tracking, transaction visibility, and financial decision support in a secure environment.
+The prototype displays sample balances and ledger entries, and supports simulated transaction capture. Entries are not saved to a database or connected to a bank.
 
 ### 3. Order / Funding Workflow
-Users can manage order-related funding flows, monitor progress, and complete operations through a streamlined digital journey.
+The prototype demonstrates WhatsApp-style order review, simulated counter-offers, and funding flows.
 
-### 4. Secure Payments and Integrations
-The platform is designed to support secure API-based payment integrations with fraud screening and compliance safeguards.
+### 4. Integrations
+Payment, OCR, messaging, and regulatory integrations are not connected. The UI contains prototype demonstrations only.
 
-### 5. Real-Time Data Handling
-The backend is structured to process and respond to financial events in near real time, powering dashboards, alerts, and status updates.
+### 5. Shared API
+The Node.js server currently exposes a health check only. It does not yet process business operations or persist data.
 
 ## System Architecture
 
-HorizonCapital's current development architecture uses the responsive web client as the shared user interface. The Expo app loads that same client in a native WebView, and the Vite development server proxies its `/api` requests to the shared Node server. Supabase Auth is used by the web client; durable business-data APIs and storage have not been implemented yet.
+The responsive React web client is the shared UI for browser and mobile. The Expo React Native app loads that same client in a native WebView, so both use the same screens and styling. During development, Vite proxies `/api` requests to the Node.js server. Supabase Auth handles sign-in in the web client; the WebView uses that same web session. The API currently provides only `GET /api/health`; business data remains in client memory and is not synchronized or persisted.
 
 ## Project Structure
 
@@ -74,22 +74,14 @@ HorizonCapital/
 │       └── utils/
 ├── mobile-client/
 │   ├── package.json
-│   ├── assets/
-│   └── src/
-│       ├── components/
-│       ├── navigation/
-│       ├── screens/
-│       ├── services/
-│       └── types/
+│   ├── app.json
+│   └── App.tsx
 ├── server/
 │   ├── package.json
 │   ├── server.js
-│   └── src/
-│       ├── config/
-│       ├── controllers/
-│       ├── models/
-│       ├── routes/
-│       └── services/
+│   └── package-lock.json
+├── supabase/
+│   └── migrations/
 └── .gitignore
 ```
 
@@ -109,22 +101,23 @@ HorizonCapital/
 
 - The native Expo app loads the same responsive web client used by the web preview, inside a native WebView shell
 - The web client checks the shared Node API health endpoint, and Vite proxies `/api` requests to that server
-- Supabase Auth is configured by the web client and therefore shared by the web app and native wrapper
+- Supabase Auth is configured by the web client and used inside the native WebView
 
 ### Not implemented or connected yet
 
 - The API currently exposes health only; demo business data and transactions remain in client memory and are not synchronized or persisted
-- Server-side API authentication/authorization and persistent user or transaction records
+- API authentication/authorization and persistent user or transaction records
 - Live banking, payment-provider, SoftPOS/NFC, OCR, or WhatsApp integrations
 - Production credit decisioning, fraud checks, and compliance controls
 
 ### Run the shared development stack
 
-Use three terminals from the `HorizonCapital` directory. The native app uses the same Vite web app and the same API server as the web client.
+Use three terminals from the `HorizonCapital` directory. The native app loads the same Vite web app and calls the same API as the browser.
 
 ```bash
 # Terminal 1: shared API server
 cd server
+npm install
 npm run dev
 ```
 
@@ -142,54 +135,56 @@ npm install
 npm start
 ```
 
-The API listens on port `4000`; the web client proxies `/api` to it and runs on port `5173`. Expo detects its development host and loads the web client there. If using a physical device and automatic host detection does not work, set `EXPO_PUBLIC_WEB_CLIENT_URL` in `mobile-client/.env` to `http://<computer-lan-ip>:5173`, then restart Expo. Keep the device and computer on the same network.
+The API listens on port `4000`; the web client runs on port `5173` and proxies `/api` to the API server.
 
-To check the shared API directly, open `http://localhost:4000/api/health`.
+For a physical phone, keep it and the development computer on the same Wi-Fi network. Expo host detection is used to find the web client. If that address cannot be reached, set `EXPO_PUBLIC_WEB_CLIENT_URL` in `mobile-client/.env` to `http://<computer-lan-ip>:5173` (for example, `http://192.168.1.10:5173`) and restart Expo. The web dev server must be reachable from the local network.
+
+Check the API at `http://localhost:4000/api/health`. A healthy response is `{"status":"ok","service":"horizon-capital-api"}`.
 
 ## Environment Variables
 
-The server accepts `PORT` (default `4000`) and `ALLOWED_ORIGINS` for comma-separated web origins when calling the API directly across origins. The web client accepts `API_SERVER_URL` for the Vite proxy target (default `http://127.0.0.1:4000`) and `VITE_API_URL` for a deployed API origin (default `/api`). The native wrapper accepts `EXPO_PUBLIC_WEB_CLIENT_URL` when it should load a specific deployed or LAN web client URL.
+| Variable | Used by | Purpose | Default |
+| --- | --- | --- | --- |
+| `PORT` | API server | HTTP listen port | `4000` |
+| `ALLOWED_ORIGINS` | API server | Comma-separated origins allowed for direct cross-origin browser requests | `http://localhost:5173,http://127.0.0.1:5173` |
+| `API_SERVER_URL` | Vite dev server | API proxy target | `http://127.0.0.1:4000` |
+| `VITE_API_URL` | Web client | API base URL, including `/api` | `/api` |
+| `EXPO_PUBLIC_WEB_CLIENT_URL` | Expo app | Explicit URL for a LAN or deployed web client | Automatically detected in development; required for production builds |
+
+Configure the Supabase project URL and publishable key in `web-client/.env` using the variable names in `web-client/.env.example`. The Expo WebView loads that web client, so Supabase Auth configuration comes from the web client's environment. Set `EXPO_PUBLIC_WEB_CLIENT_URL` in `mobile-client/.env` only when you need to override the auto-detected development URL or configure the native app to load a deployed web client. Use a publishable key only; never put a Supabase secret or service-role key in a client app.
 
 ## Security Considerations
 
-HorizonCapital is designed with strong security in mind:
+This prototype is not approved for production financial use. Before production:
 
-- end-to-end encryption for sensitive data
-- secure authentication and authorization
-- fraud-monitoring logic for transaction review
-- protected API gateways and signed requests
-- data minimization and safe storage of transactional records
-- secure handling of payment provider credentials
+- implement and test server-side authorization for every user-owned resource
+- add durable storage, input validation, audit logging, and operational monitoring
+- keep provider secrets on the server and review payment integrations
+- obtain qualified security, privacy, and regulatory reviews
 
 ## Compliance Focus
 
-The platform is intended to support compliance-conscious financial operations by integrating secure transaction models, audit-friendly records, and reliable API governance.
+Compliance requirements have not been implemented or assessed. Determine applicable regulatory obligations before using the product with real users or financial data.
 
 ## Development Workflow
 
 1. Define and validate business rules for funding and payment flows.
 2. Implement API endpoints and data models.
-3. Build mobile interfaces for assessment and transaction tasks.
-4. Integrate secure third-party services.
-5. Test payment, fraud, and user flow scenarios.
-6. Deploy to cloud infrastructure with monitoring and backup controls.
+3. Keep the shared web and mobile experience accessible and consistent.
+4. Integrate third-party services through server-side adapters.
+5. Test user flows, authorization, and failure scenarios.
+6. Complete security and compliance reviews before production deployment.
 
 ## Deployment
 
-Recommended deployment model:
-
-- Frontend: Vercel or Firebase hosting for web and app delivery support
-- Backend: Node.js or Python API deployed on scalable cloud infrastructure
-- Database: PostgreSQL managed instance
-- Monitoring: logging, error tracking, analytics, and alerting dashboards
+The current API is a development health-check service, not a production backend. Before deployment, configure a publicly reachable web client and API, set `EXPO_PUBLIC_WEB_CLIENT_URL` for native builds, configure API CORS and Supabase auth redirect URLs, and implement and review the missing persistence and authorization features. Native builds require an HTTPS web-client URL; localhost and LAN URLs are for development only.
 
 ## Roadmap
 
-- build complete onboarding and assessment experience
-- integrate secure payment gateways
-- add analytics dashboards for transaction insights
-- strengthen fraud detection and compliance automation
-- improve user personalization and status tracking
+- implement authenticated business-data API endpoints and persistence
+- synchronize profiles, ledger activity, and assessment progress across sessions
+- add provider integrations only after server-side security controls are in place
+- complete security, privacy, and compliance reviews before production use
 
 ## License
 
@@ -197,4 +192,4 @@ This project is currently under active development and may be updated as the pro
 
 ## Summary
 
-HorizonCapital is positioned as a modern financial platform that combines secure digital transactions, responsive user experiences, and scalable backend services. The architecture is designed to support rapid growth while maintaining strong compliance, risk controls, and reliability for users managing financial decisions on the go.
+HorizonCapital is currently a prototype: one responsive web app powers both the browser experience and the Expo WebView app, while a shared Node.js server provides an API health check. Authentication uses Supabase; demo business data remains local and is not persisted. The project is not ready to process real payments or make real financial decisions.
