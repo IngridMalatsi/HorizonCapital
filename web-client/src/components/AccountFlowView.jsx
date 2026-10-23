@@ -79,7 +79,7 @@ function ListRow({ label, Icon, onClick, destructive = false }) {
 function DemoNotice() {
   return (
     <p className="text-[11px] leading-relaxed text-slate-400 bg-slate-900 border border-slate-800 rounded-xl p-3">
-      Demo interface only. Authentication, account changes, image uploads, and account deletion are not connected to a backend.
+      Sign-in uses Supabase Auth. Profile editing, image uploads, account deletion, and financial activity are demo-only and are not synced.
     </p>
   );
 }
@@ -87,12 +87,10 @@ function DemoNotice() {
 export default function AccountFlowView({
   screen,
   onNavigate,
-  onSignIn,
   onLogout,
-  onOpenIntegrations
+  onOpenIntegrations,
+  userEmail = '',
 }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [notice, setNotice] = useState('');
   const [twoStep, setTwoStep] = useState(true);
   const [accountSettingsReturn, setAccountSettingsReturn] = useState('user-profile');
@@ -102,64 +100,7 @@ export default function AccountFlowView({
     phone: '+1878891821',
     gender: 'Male'
   });
-  const [accountEmail, setAccountEmail] = useState('john.alex@example.com');
-  const [accountPassword, setAccountPassword] = useState('demo-password');
   const [editingField, setEditingField] = useState('');
-
-  if (screen === 'signin') {
-    return (
-      <div className="max-w-md mx-auto space-y-5 pt-8">
-        <div>
-          <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400">HorizonCapital</span>
-          <h1 className="text-2xl font-bold text-slate-100 mt-2">Sign in</h1>
-          <p className="text-sm text-slate-400 mt-1">Continue to your business dashboard.</p>
-        </div>
-        <DemoNotice />
-        <form
-          className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setNotice('');
-            onSignIn(email.trim());
-          }}
-        >
-          <label className="block text-xs text-slate-300">
-            Email
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full min-w-0 px-3 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
-            />
-          </label>
-          <label className="block text-xs text-slate-300">
-            Password
-            <input
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full min-w-0 px-3 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
-            />
-          </label>
-          <button type="submit" className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white">
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => setNotice('Password recovery is unavailable because no authentication service is connected.')}
-            className="w-full text-center text-xs text-emerald-400 hover:text-emerald-300"
-          >
-            Forgot Password?
-          </button>
-          {notice && <p role="status" className="text-xs text-amber-300">{notice}</p>}
-        </form>
-      </div>
-    );
-  }
 
   if (screen === 'menu') {
     return (
@@ -313,31 +254,13 @@ export default function AccountFlowView({
         <ScreenHeader title="Account settings" onBack={() => onNavigate(accountSettingsReturn)} />
         <DemoNotice />
         <div className="px-3 rounded-xl bg-slate-900 border border-slate-800">
-          {[
-            { label: 'Login email', value: accountEmail, setter: setAccountEmail, type: 'email' },
-            { label: 'Password', value: accountPassword, setter: setAccountPassword, type: 'password' }
-          ].map(({ label, value, setter, type }) => (
-            <div key={label} className="flex items-center gap-3 py-3 border-b border-slate-800">
-              <label className="flex-1 min-w-0 text-[10px] text-slate-400">
-                {label}
-                <input
-                  type={type}
-                  value={value}
-                  disabled={editingField !== label}
-                  onChange={(event) => setter(event.target.value)}
-                  className="block w-full min-w-0 mt-1 bg-transparent disabled:text-slate-400 enabled:text-slate-100 text-xs focus:outline-none"
-                />
-              </label>
-              <button
-                type="button"
-                aria-label={`Edit ${label}`}
-                onClick={() => setEditingField((current) => current === label ? '' : label)}
-                className="p-2 text-slate-400 hover:text-emerald-400"
-              >
-                {editingField === label ? <X className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
-              </button>
-            </div>
-          ))}
+          <div className="border-b border-slate-800 py-3">
+            <span className="block text-[10px] text-slate-400">Login email</span>
+            <span className="mt-1 block break-all text-xs text-slate-200">{userEmail || 'Not available'}</span>
+          </div>
+          <p className="py-3 text-xs leading-relaxed text-slate-400">
+            Passwords are securely managed by Supabase Auth and are never shown here.
+          </p>
           <div className="flex items-center gap-3 py-3 border-b border-slate-800">
             <div className="flex-1 min-w-0">
               <span className="block text-xs text-slate-200">Two step verification</span>

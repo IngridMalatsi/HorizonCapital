@@ -59,7 +59,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="w-full md:w-72 md:flex md:flex-col bg-slate-900/90 border-r border-slate-800 shrink-0 min-h-0 md:min-h-[calc(100vh-65px)] p-3 sm:p-4 text-slate-200">
+    <aside className="hidden w-full shrink-0 flex-col border-r border-slate-800 bg-slate-900/90 p-3 text-slate-200 md:flex md:min-h-[calc(100vh-65px)] md:w-72 md:p-4">
       {/* Business profile and Executive Overview */}
       <div className="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/70 mb-4">
         <div className="flex items-center gap-3 mb-2.5 min-w-0">

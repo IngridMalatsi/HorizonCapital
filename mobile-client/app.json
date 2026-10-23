@@ -4,9 +4,9 @@
     "slug": "horizon-capital",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#0b1220"
+      "backgroundColor": "#F8F9FA"
     },
     "ios": {
       "supportsTablet": true,
@@ -23,11 +23,12 @@
         "android.permission.VIBRATE"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#0b1220"
+        "backgroundColor": "#F8F9FA"
       }
     },
     "plugins": [
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store"
     ]
   }
 }

@@ -12,7 +12,7 @@ export default function HomeScreen({ onNavigate }: { onNavigate: (destination: H
       <View style={styles.topLine}>
         <Badge tone="gold">DEMO BUSINESS</Badge>
         <Pressable accessibilityRole="button" accessibilityLabel="Show business QR code" onPress={() => onNavigate('qr')} style={styles.qrButton}>
-          <Ionicons name="qr-code-outline" size={20} color={colors.background} />
+          <Ionicons name="qr-code-outline" size={20} color={colors.text} />
         </Pressable>
       </View>
 

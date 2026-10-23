@@ -33,7 +33,7 @@ export default function Navbar({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className={`${deviceMode === 'smartphone' ? 'text-[11px]' : 'max-sm:text-xs text-sm sm:text-base'} font-bold tracking-tight text-white whitespace-nowrap`}>
-                  Thandi's Bakery
+                  {currentProfile?.name || 'Your business'}
                 </span>
                 <span className={`${deviceMode === 'smartphone' ? 'hidden' : 'hidden md:inline-flex'} items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 uppercase tracking-wider`}>
                   Active

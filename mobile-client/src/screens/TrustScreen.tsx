@@ -24,7 +24,7 @@ export default function TrustScreen() {
       <Card style={styles.qrCard}>
         <SectionTitle>Sample profile QR</SectionTitle>
         <View style={styles.qr}>
-          <QRCode value={shareableUrl} size={184} backgroundColor="#ffffff" color="#0b1220" />
+          <QRCode value={shareableUrl} size={184} backgroundColor={colors.surface} color={colors.text} />
         </View>
         <Text style={styles.link}>{shareableUrl}</Text>
         <Text style={styles.muted}>This reserved demo link does not open a real profile. Never use a demo badge as proof of identity or payment.</Text>
@@ -41,6 +41,6 @@ const styles = StyleSheet.create({
   muted: { color: colors.muted, fontSize: 11, lineHeight: 16 },
   detail: { color: colors.text, fontSize: 12 },
   qrCard: { alignItems: 'center' },
-  qr: { backgroundColor: '#ffffff', padding: 14, borderRadius: 16 },
+  qr: { backgroundColor: colors.surface, padding: 14, borderRadius: 16 },
   link: { color: colors.greenLight, fontSize: 11, textAlign: 'center' },
 });

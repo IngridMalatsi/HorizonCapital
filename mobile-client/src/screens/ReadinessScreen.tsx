@@ -46,6 +46,6 @@ const styles = StyleSheet.create({
   warning: { color: colors.gold },
   track: { height: 5, backgroundColor: colors.background, borderRadius: 4, overflow: 'hidden', marginBottom: 9 },
   progress: { height: '100%', borderRadius: 4 },
-  offer: { borderColor: '#705b34' },
+  offer: { borderColor: colors.gold },
   offerAmount: { color: colors.gold, fontSize: 30, fontWeight: '700' },
 });

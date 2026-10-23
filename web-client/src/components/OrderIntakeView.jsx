@@ -172,7 +172,7 @@ export default function OrderIntakeView({
             </div>
 
             {/* Simulated WhatsApp Chat Bubble */}
-            <div className="p-4 rounded-2xl rounded-tl-sm bg-[#054640]/45 border border-emerald-700/50 text-emerald-100 shadow-inner leading-relaxed relative">
+            <div className="p-4 rounded-2xl rounded-tl-sm bg-[#FFF1E8] border border-orange-200 text-slate-800 shadow-inner leading-relaxed relative">
               <div className="flex items-center justify-between text-[11px] text-emerald-400 font-bold mb-1.5">
                 <span>{activePreset.sender}</span>
                 <span className="text-[10px] uppercase tracking-wider bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/60">Township Order</span>

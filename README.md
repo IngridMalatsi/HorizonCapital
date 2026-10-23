@@ -23,13 +23,13 @@ The platform is built to support a seamless user journey from initial assessment
 ## Tech Stack
 
 ### Frontend
-React Native / Flutter for a responsive, cross-platform mobile and web experience accessible on standard smartphones.
+React web client for desktop and mobile, displayed inside an Expo React Native WebView shell on mobile.
 
 ### Backend
-Node.js with Express / Python (Django or FastAPI) for robust real-time data processing and secure transaction handling.
+Shared Node.js HTTP API server. The current implemented endpoint reports API health; business operations are still prototype simulations.
 
-### Database & Cloud
-PostgreSQL for secure transactional records; Firebase / Vercel for scalable and reliable cloud hosting.
+### Identity & Data
+Supabase Auth handles sign-in. Business profiles, ledger entries, and other demo activity are currently held in client memory rather than persisted.
 
 ### Security & Compliance
 End-to-end encryption, built-in fraud protection protocols, and secure API integrations for digital payment gateways.
@@ -53,12 +53,7 @@ The backend is structured to process and respond to financial events in near rea
 
 ## System Architecture
 
-HorizonCapital follows a modular architecture:
-
-- Mobile client handles user interaction, onboarding, assessment flow, and account activity
-- API layer manages authentication, business logic, and transaction processing
-- Database stores transactions, users, risk metadata, and funding records
-- Cloud hosting provides scalability, performance, and uptime reliability
+HorizonCapital's current development architecture uses the responsive web client as the shared user interface. The Expo app loads that same client in a native WebView, and the Vite development server proxies its `/api` requests to the shared Node server. Supabase Auth is used by the web client; durable business-data APIs and storage have not been implemented yet.
 
 ## Project Structure
 
@@ -110,72 +105,50 @@ HorizonCapital/
 - Market Linker profile and funder report views
 - Desktop, tablet, and smartphone preview modes
 
+### Implemented shared development setup
+
+- The native Expo app loads the same responsive web client used by the web preview, inside a native WebView shell
+- The web client checks the shared Node API health endpoint, and Vite proxies `/api` requests to that server
+- Supabase Auth is configured by the web client and therefore shared by the web app and native wrapper
+
 ### Not implemented or connected yet
 
-- The web prototype uses mock data; it is not connected to the database or server
-- Authentication, authorization, and persistent user or transaction records
+- The API currently exposes health only; demo business data and transactions remain in client memory and are not synchronized or persisted
+- Server-side API authentication/authorization and persistent user or transaction records
 - Live banking, payment-provider, SoftPOS/NFC, OCR, or WhatsApp integrations
 - Production credit decisioning, fraud checks, and compliance controls
-- A working native mobile client or documented, implemented API endpoints
 
-### Run the web prototype
+### Run the shared development stack
+
+Use three terminals from the `HorizonCapital` directory. The native app uses the same Vite web app and the same API server as the web client.
 
 ```bash
+# Terminal 1: shared API server
+cd server
+npm run dev
+```
+
+```bash
+# Terminal 2: web client (also serves the app loaded by Expo)
 cd web-client
 npm install
 npm run dev
 ```
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Python 3.10+ (if using Django or FastAPI)
-- PostgreSQL database instance
-- Firebase or Vercel project credentials for hosting and services
-
-### Backend Setup
-
-1. Navigate to the server directory.
-2. Install dependencies.
-3. Configure environment variables for database, JWT/auth, and payment APIs.
-4. Start the server in development mode.
-
-Example:
-
 ```bash
-cd server
-npm install
-npm run dev
-```
-
-### Frontend Setup
-
-1. Navigate to the mobile client directory.
-2. Install dependencies.
-3. Start the app in emulator, simulator, or web preview mode.
-
-Example:
-
-```bash
+# Terminal 3: native app shell
 cd mobile-client
 npm install
 npm start
 ```
 
+The API listens on port `4000`; the web client proxies `/api` to it and runs on port `5173`. Expo detects its development host and loads the web client there. If using a physical device and automatic host detection does not work, set `EXPO_PUBLIC_WEB_CLIENT_URL` in `mobile-client/.env` to `http://<computer-lan-ip>:5173`, then restart Expo. Keep the device and computer on the same network.
+
+To check the shared API directly, open `http://localhost:4000/api/health`.
+
 ## Environment Variables
 
-The application should use environment variables for the following:
-
-- DATABASE_URL
-- JWT_SECRET
-- FIREBASE_CONFIG
-- PAYMENT_API_KEY
-- PAYMENT_API_SECRET
-- NODE_ENV
-- PORT
+The server accepts `PORT` (default `4000`) and `ALLOWED_ORIGINS` for comma-separated web origins when calling the API directly across origins. The web client accepts `API_SERVER_URL` for the Vite proxy target (default `http://127.0.0.1:4000`) and `VITE_API_URL` for a deployed API origin (default `/api`). The native wrapper accepts `EXPO_PUBLIC_WEB_CLIENT_URL` when it should load a specific deployed or LAN web client URL.
 
 ## Security Considerations
 

@@ -50,7 +50,7 @@ import {
  */
 
 const CURRENCY = 'en-ZA';
-const CHART_COLORS = ['#10b981', '#f59e0b', '#38bdf8', '#f472b6', '#a78bfa', '#fb7185'];
+const CHART_COLORS = ['#FF6B00', '#B84D00', '#6C757D', '#DDE1E5', '#F28C45', '#C62828'];
 
 const DEFAULT_RECEIPTS = [
   {
@@ -213,7 +213,7 @@ function getAnalytics(transactions) {
   };
 }
 
-function StatCard({ title, value, subtitle, icon: Icon, tone = 'slate' }) {
+function StatCard({ title, value, subtitle, icon: Icon, tone = 'slate', compact = false }) {
   const tones = {
     slate: 'text-slate-100 bg-slate-800/70',
     green: 'text-emerald-300 bg-emerald-500/10',
@@ -223,17 +223,17 @@ function StatCard({ title, value, subtitle, icon: Icon, tone = 'slate' }) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-slate-400">{title}</p>
-        <span className={`rounded-lg p-2 ${tones[tone] || tones.slate}`}>
-          <Icon className="h-4 w-4" />
+    <div className={`min-w-0 rounded-2xl border border-slate-800 bg-slate-900 ${compact ? 'p-3' : 'p-3 sm:p-4'}`}>
+      <div className={`mb-2 flex min-w-0 items-start justify-between gap-1.5 ${compact ? '' : 'sm:mb-3 sm:items-center sm:gap-2'}`}>
+        <p className={`min-w-0 font-medium leading-tight text-slate-400 ${compact ? 'text-[11px]' : 'text-[11px] sm:text-xs'}`}>{title}</p>
+        <span className={`shrink-0 rounded-lg ${compact ? 'p-1.5' : 'p-1.5 sm:p-2'} ${tones[tone] || tones.slate}`}>
+          <Icon className={`h-3.5 w-3.5 ${compact ? '' : 'sm:h-4 sm:w-4'}`} />
         </span>
       </div>
-      <p className="break-words text-xl font-black tracking-tight text-slate-100 sm:text-2xl">
+      <p className={`break-words font-black tracking-tight text-slate-100 ${compact ? 'text-base' : 'text-base sm:text-2xl'}`}>
         {value}
       </p>
-      {subtitle && <p className="mt-2 text-xs text-slate-500">{subtitle}</p>}
+      {subtitle && <p className={`mt-1.5 leading-snug text-slate-500 ${compact ? 'text-[10px]' : 'text-[10px] sm:mt-2 sm:text-xs'}`}>{subtitle}</p>}
     </div>
   );
 }
@@ -242,9 +242,11 @@ export default function LedgerView({
   transactions: transactionsProp,
   cashInDrawer,
   digitalBankBalance,
+  deviceMode = 'desktop',
   onAddTransaction,
   presetReceipts = DEFAULT_RECEIPTS,
 }) {
+  const isPhoneMode = deviceMode === 'smartphone';
   // Keep newly entered transactions visible immediately, even if the parent callback
   // does not update its props yet. When the parent does update, IDs prevent duplicates.
   const [localTransactions, setLocalTransactions] = useState([]);
@@ -310,7 +312,14 @@ export default function LedgerView({
       if (dateTo && (!txDay || txDay > dateTo)) return false;
 
       if (query) {
-        const searchable = `${tx.description || ''} ${tx.category || ''} ${tx.method || ''}`.toLowerCase();
+        const searchable = [
+          tx.description,
+          tx.category,
+          tx.method,
+          tx.channel,
+          tx.status,
+          tx.type,
+        ].filter(Boolean).join(' ').toLowerCase();
         if (!searchable.includes(query)) return false;
       }
 
@@ -514,13 +523,14 @@ export default function LedgerView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={`grid min-w-0 grid-cols-2 gap-2 ${isPhoneMode ? '' : 'sm:gap-3 xl:grid-cols-4'}`}>
         <StatCard
           title="Physical Cash Balance"
           value={formatZAR(cashBalance)}
           subtitle="Cash-channel balance from supplied balance or ledger entries"
           icon={Coins}
           tone="amber"
+          compact={isPhoneMode}
         />
         <StatCard
           title="Digital Bank Balance"
@@ -528,6 +538,7 @@ export default function LedgerView({
           subtitle="Digital-channel balance from supplied balance or ledger entries"
           icon={Building}
           tone="green"
+          compact={isPhoneMode}
         />
         <StatCard
           title="Revenue in Filter"
@@ -535,6 +546,7 @@ export default function LedgerView({
           subtitle={`${analytics.transactionCount} transaction(s) in current filter`}
           icon={TrendingUp}
           tone="cyan"
+          compact={isPhoneMode}
         />
         <StatCard
           title="Net Cash Flow in Filter"
@@ -542,6 +554,7 @@ export default function LedgerView({
           subtitle={`Expenses: ${formatZAR(analytics.totalExpenses)}`}
           icon={analytics.netCashFlow >= 0 ? TrendingUp : TrendingDown}
           tone={analytics.netCashFlow >= 0 ? 'green' : 'rose'}
+          compact={isPhoneMode}
         />
       </div>
 
@@ -572,15 +585,15 @@ export default function LedgerView({
 
       {activeTab === 'analytics' ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="Total Expenses" value={formatZAR(analytics.totalExpenses)} subtitle="Outflows in current filter" icon={TrendingDown} tone="rose" />
-            <StatCard title="Cash Revenue" value={formatZAR(analytics.cashRevenue)} subtitle="Income recorded as cash" icon={Coins} tone="amber" />
-            <StatCard title="Digital Revenue" value={formatZAR(analytics.digitalRevenue)} subtitle="Income recorded as digital" icon={Building} tone="green" />
-            <StatCard title="Digital Share" value={`${analytics.digitalSalesShare.toFixed(1)}%`} subtitle="Share of recorded revenue" icon={Wallet} tone="cyan" />
+          <div className={`grid gap-3 ${isPhoneMode ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4'}`}>
+            <StatCard title="Total Expenses" value={formatZAR(analytics.totalExpenses)} subtitle="Outflows in current filter" icon={TrendingDown} tone="rose" compact={isPhoneMode} />
+            <StatCard title="Cash Revenue" value={formatZAR(analytics.cashRevenue)} subtitle="Income recorded as cash" icon={Coins} tone="amber" compact={isPhoneMode} />
+            <StatCard title="Digital Revenue" value={formatZAR(analytics.digitalRevenue)} subtitle="Income recorded as digital" icon={Building} tone="green" compact={isPhoneMode} />
+            <StatCard title="Digital Share" value={`${analytics.digitalSalesShare.toFixed(1)}%`} subtitle="Share of recorded revenue" icon={Wallet} tone="cyan" compact={isPhoneMode} />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4 xl:col-span-2">
+          <div className={`grid grid-cols-1 gap-4 ${isPhoneMode ? '' : 'xl:grid-cols-3'}`}>
+            <section className={`rounded-2xl border border-slate-800 bg-slate-900 p-4 ${isPhoneMode ? '' : 'xl:col-span-2'}`}>
               <div className="mb-4">
                 <h2 className="text-lg font-bold">Revenue vs Expenses</h2>
                 <p className="text-xs text-slate-400">Daily totals for the selected date range (up to the latest 14 days with transactions).</p>
@@ -589,17 +602,17 @@ export default function LedgerView({
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={analytics.dailyTrend} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="date" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                      <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#DDE1E5" />
+                      <XAxis dataKey="date" stroke="#6C757D" tick={{ fontSize: 11 }} />
+                      <YAxis stroke="#6C757D" tick={{ fontSize: 11 }} />
                       <Tooltip
-                        contentStyle={{ background: '#020617', border: '1px solid #334155', borderRadius: 12 }}
-                        labelStyle={{ color: '#e2e8f0' }}
+                        contentStyle={{ background: '#FFFFFF', border: '1px solid #DDE1E5', borderRadius: 12 }}
+                        labelStyle={{ color: '#1A1A1A' }}
                         formatter={(value) => formatZAR(value)}
                       />
                       <Legend />
-                      <Bar dataKey="revenue" name="Revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="expenses" name="Expenses" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="revenue" name="Revenue" fill="#FF6B00" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expenses" name="Expenses" fill="#6C757D" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -622,7 +635,7 @@ export default function LedgerView({
                           ))}
                         </Pie>
                         <Tooltip
-                          contentStyle={{ background: '#020617', border: '1px solid #334155', borderRadius: 12 }}
+                          contentStyle={{ background: '#FFFFFF', border: '1px solid #DDE1E5', borderRadius: 12 }}
                           formatter={(value) => formatZAR(value)}
                         />
                       </PieChart>
@@ -661,42 +674,43 @@ export default function LedgerView({
         </div>
       ) : (
         <>
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+          <section className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-3 sm:p-4">
             <div className="mb-3 flex items-center gap-2">
               <Search className="h-4 w-4 text-slate-400" />
               <h2 className="font-bold">Search and filter transactions</h2>
             </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className={`grid min-w-0 grid-cols-2 gap-2 ${isPhoneMode ? '' : 'sm:gap-3 md:grid-cols-2 xl:grid-cols-5'}`}>
               <input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search description, category or method"
-                className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-emerald-500 xl:col-span-2"
+                aria-label="Search transactions"
+                className={`min-w-0 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm outline-none focus:border-emerald-500 ${isPhoneMode ? 'col-span-2' : 'col-span-2 xl:col-span-2'}`}
               />
-              <select value={channelFilter} onChange={(event) => setChannelFilter(event.target.value)} className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
+              <select aria-label="Filter by payment channel" value={channelFilter} onChange={(event) => setChannelFilter(event.target.value)} className="col-span-1 min-w-0 rounded-xl border border-slate-800 bg-slate-950 px-2 py-2.5 text-[11px] sm:px-3 sm:text-sm">
                 <option value="ALL">All payment channels</option>
                 <option value="CASH">Cash</option>
                 <option value="DIGITAL">Digital</option>
               </select>
-              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
+              <select aria-label="Filter by transaction type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="col-span-1 min-w-0 rounded-xl border border-slate-800 bg-slate-950 px-2 py-2.5 text-[11px] sm:px-3 sm:text-sm">
                 <option value="ALL">All transaction types</option>
                 <option value="INCOME">Income</option>
                 <option value="EXPENSE">Expenses</option>
               </select>
-              <button type="button" onClick={resetFilters} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800">
+              <button type="button" onClick={resetFilters} className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-700 px-2 py-2.5 text-xs text-slate-300 hover:bg-slate-800 sm:gap-2 sm:px-3 sm:text-sm">
                 <RefreshCw className="h-4 w-4" /> Reset filters
               </button>
-              <label className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-400">
+              <label className="flex min-w-0 flex-col gap-1.5 rounded-xl border border-slate-800 bg-slate-950 px-2.5 py-2 text-[10px] text-slate-400 sm:px-3 sm:text-xs">
                 <CalendarDays className="h-4 w-4 shrink-0" />
-                From
-                <input aria-label="Start date" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="min-w-0 flex-1 bg-transparent text-slate-200" />
+                <span>From date</span>
+                <input aria-label="Start date" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="w-full min-w-0 max-w-full bg-transparent text-xs text-slate-200" />
               </label>
-              <label className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-400">
+              <label className="flex min-w-0 flex-col gap-1.5 rounded-xl border border-slate-800 bg-slate-950 px-2.5 py-2 text-[10px] text-slate-400 sm:px-3 sm:text-xs">
                 <CalendarDays className="h-4 w-4 shrink-0" />
-                To
-                <input aria-label="End date" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="min-w-0 flex-1 bg-transparent text-slate-200" />
+                <span>To date</span>
+                <input aria-label="End date" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="w-full min-w-0 max-w-full bg-transparent text-xs text-slate-200" />
               </label>
-              <button type="button" onClick={downloadCsv} className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-3 py-2 text-sm font-bold text-slate-950 hover:bg-cyan-400 md:col-span-2 xl:col-span-1">
+              <button type="button" onClick={downloadCsv} className={`inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl bg-cyan-500 px-2 py-2.5 text-xs font-bold text-slate-950 hover:bg-cyan-400 ${isPhoneMode ? '' : 'sm:gap-2 sm:px-3 sm:text-sm md:col-span-2 xl:col-span-1'}`}>
                 <Download className="h-4 w-4" /> Export CSV
               </button>
             </div>
@@ -709,18 +723,19 @@ export default function LedgerView({
             </div>
           )}
 
-          <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-            <div className="flex flex-col gap-2 border-b border-slate-800 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+            <div className="flex min-w-0 flex-col gap-2 border-b border-slate-800 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
               <div>
                 <h2 className="font-bold">Transaction Ledger</h2>
                 <p className="text-xs text-slate-400">{filteredTransactions.length} matching transaction(s)</p>
               </div>
-              <button type="button" onClick={downloadCsv} className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-700 px-3 py-2 text-xs hover:bg-slate-800 sm:self-auto">
+              <button type="button" onClick={downloadCsv} className="inline-flex min-w-0 items-center justify-center gap-2 self-stretch rounded-lg border border-slate-700 px-3 py-2 text-xs hover:bg-slate-800 sm:self-auto">
                 <Download className="h-3.5 w-3.5" /> Export filtered records
               </button>
             </div>
             {filteredTransactions.length ? (
-              <div className="overflow-x-auto">
+              <>
+              <div className={isPhoneMode ? 'hidden' : 'hidden overflow-x-auto sm:block'}>
                 <table className="w-full min-w-[850px] text-left text-sm">
                   <thead className="bg-slate-950/70 text-xs uppercase tracking-wide text-slate-400">
                     <tr>
@@ -763,6 +778,34 @@ export default function LedgerView({
                   </tbody>
                 </table>
               </div>
+              <div className={`divide-y divide-slate-800 ${isPhoneMode ? '' : 'sm:hidden'}`}>
+                {filteredTransactions.map((tx) => {
+                  const isIncome = Number(tx.amount) > 0;
+                  return (
+                    <article key={tx.id} className="min-w-0 space-y-2.5 p-3">
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <div className="flex min-w-0 items-start gap-2">
+                          <span className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                            {isIncome ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="break-words text-sm font-semibold text-slate-100">{tx.description || 'No description'}</p>
+                            <p className="mt-0.5 text-[11px] text-slate-400">{prettyDate(tx.date)}</p>
+                          </div>
+                        </div>
+                        <span className={`shrink-0 whitespace-nowrap text-right text-sm font-bold ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {isIncome ? '+' : '−'}{formatZAR(Math.abs(Number(tx.amount) || 0))}
+                        </span>
+                      </div>
+                      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 pl-8 text-[10px] text-slate-400">
+                        <span className="min-w-0 break-words">{tx.channel || 'Unknown'} · {tx.category || 'Uncategorised'}</span>
+                        <span className="max-w-full break-words rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">{tx.status || 'Recorded'}</span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              </>
             ) : (
               <EmptyState message="No transactions match your filters. Add an entry or reset the filters." />
             )}

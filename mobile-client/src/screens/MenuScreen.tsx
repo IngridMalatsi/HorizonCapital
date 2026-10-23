@@ -1,10 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Card, colors, ListRow, Screen, SectionTitle } from '../components/UI';
 
 export type MenuDestination = 'working-capital' | 'trust' | 'assessment' | 'readiness' | 'security' | 'qr';
 
-export default function MenuScreen({ onNavigate }: { onNavigate: (destination: MenuDestination) => void }) {
+export default function MenuScreen({
+  onNavigate,
+  onSignOut,
+  authError,
+}: {
+  onNavigate: (destination: MenuDestination) => void;
+  onSignOut: () => void;
+  authError: string;
+}) {
   return (
     <Screen title="Menu" subtitle="Business tools and account options.">
       <Card>
@@ -61,15 +69,27 @@ export default function MenuScreen({ onNavigate }: { onNavigate: (destination: M
           <SectionTitle>Demo app</SectionTitle>
         </View>
         <View>
-          <ListRow title="Account settings" detail="No account or authentication service is connected." />
+          <ListRow title="Account settings" detail="Authentication is managed by Supabase; profile editing is not connected." />
           <ListRow title="Application settings" detail="Sample business data only; do not enter real financial or customer details." />
         </View>
+      </Card>
+
+      <Card>
+        <SectionTitle>Account</SectionTitle>
+        {authError ? <Text accessibilityRole="alert" style={styles.error}>{authError}</Text> : null}
+        <ListRow
+          title="Sign out"
+          detail="Sign out of this account on this device"
+          onPress={onSignOut}
+          trailing={<Ionicons name="log-out-outline" size={19} color={colors.red} />}
+        />
       </Card>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  notice: { backgroundColor: '#151e2c' },
+  notice: { backgroundColor: colors.surfaceRaised },
   noticeHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  error: { color: colors.red, fontSize: 12, lineHeight: 18 },
 });

@@ -6,3 +6,6 @@ ios/
 dist/
 web-build/
 *.tsbuildinfo
+.env
+.env.*
+!.env.example

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
@@ -12,6 +12,10 @@ import FunderReportModal from './components/FunderReportModal';
 import ApiKeysModal from './components/ApiKeysModal';
 import DeviceSimulatorFrame from './components/DeviceSimulatorFrame';
 import TrustQrModal from './components/TrustQrModal';
+import AuthScreen from './components/AuthScreen';
+import SplashScreen from './components/SplashScreen';
+import { supabase, supabaseConfigured, supabaseConfigError } from './lib/supabase';
+import { checkApiHealth } from './lib/api';
 
 import { 
   BUSINESS_PROFILES, 
@@ -25,12 +29,106 @@ import {
 import { sounds } from './utils/soundEffects';
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(supabaseConfigured);
+  const [authError, setAuthError] = useState('');
+  const [apiError, setApiError] = useState('');
+  const [splashVisible, setSplashVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSplashVisible(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const checkApi = async () => {
+      try {
+        await checkApiHealth();
+        if (active) setApiError('');
+      } catch {
+        if (active) setApiError('The shared API server is unavailable. Start HorizonCapital/server and reload.');
+      }
+    };
+
+    void checkApi();
+    const interval = window.setInterval(checkApi, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    let active = true;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return;
+      setSession(nextSession);
+      setAuthError('');
+      setAuthLoading(false);
+    });
+
+    supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
+      if (!active) return;
+      setSession(currentSession);
+      setAuthError(error?.message || '');
+      setAuthLoading(false);
+    }).catch((error) => {
+      if (!active) return;
+      setAuthError(error instanceof Error ? error.message : 'Unable to restore your session.');
+      setAuthLoading(false);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) setAuthError(error.message);
+  };
+
+  if (splashVisible) return <SplashScreen />;
+  if (authLoading) return <SplashScreen message="Restoring your secure session" />;
+  if (!session) return <AuthScreen supabase={supabase} initialError={authError} configError={supabaseConfigError} />;
+
+  return (
+    <>
+      <DashboardApp session={session} onSignOut={handleSignOut} />
+      {apiError && (
+        <div className="fixed bottom-20 left-4 right-4 z-[100] mx-auto flex max-w-xl items-center gap-4 rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900 shadow-xl">
+          <p role="alert">{apiError}</p>
+        </div>
+      )}
+      {authError && (
+        <div className="fixed bottom-4 left-4 right-4 z-[100] mx-auto flex max-w-xl items-center justify-between gap-4 rounded-xl border border-rose-900 bg-rose-950 p-3 text-sm text-rose-100 shadow-xl">
+          <p role="alert">{authError}</p>
+          <button className="shrink-0 underline" onClick={() => setAuthError('')} type="button">Dismiss</button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function DashboardApp({ session, onSignOut }) {
   // Active Profile State
-  const [currentProfile, setCurrentProfile] = useState(BUSINESS_PROFILES[0]);
+  const [currentProfile, setCurrentProfile] = useState(() => {
+    const initialProfile = BUSINESS_PROFILES[0];
+    const accountBusinessName = session.user.user_metadata?.business_name?.trim();
+    return {
+      ...initialProfile,
+      name: accountBusinessName || session.user.email || 'My business',
+    };
+  });
   
   // Navigation & View Mode State
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSignedIn, setIsSignedIn] = useState(true);
+  const isSignedIn = Boolean(session);
   const [deviceMode, setDeviceMode] = useState('desktop'); // 'desktop', 'smartphone', 'tablet'
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -75,16 +173,6 @@ export default function App() {
   const handleSelectDeviceMode = (mode) => {
     sounds.playPosTap();
     setDeviceMode(mode);
-  };
-
-  const handleSignIn = () => {
-    setIsSignedIn(true);
-    setActiveTab('dashboard');
-  };
-
-  const handleSignOut = () => {
-    setIsSignedIn(false);
-    setActiveTab('signin');
   };
 
   const handleNavigateToFunding = () => {
@@ -308,6 +396,7 @@ export default function App() {
               transactions={transactions}
               cashInDrawer={cashInDrawer}
               digitalBankBalance={digitalBankBalance}
+              deviceMode={deviceMode}
               onAddTransaction={handleAddTransaction}
               presetReceipts={PRESET_RECEIPTS}
             />
@@ -342,19 +431,9 @@ export default function App() {
             <AccountFlowView
               screen={activeTab}
               onNavigate={setActiveTab}
-              onSignIn={handleSignIn}
-              onLogout={handleSignOut}
+              onLogout={onSignOut}
               onOpenIntegrations={() => setApiKeysModalOpen(true)}
-            />
-          )}
-
-          {activeTab === 'signin' && (
-            <AccountFlowView
-              screen="signin"
-              onNavigate={setActiveTab}
-              onSignIn={handleSignIn}
-              onLogout={handleSignOut}
-              onOpenIntegrations={() => setApiKeysModalOpen(true)}
+              userEmail={session.user.email}
             />
           )}
 
@@ -362,16 +441,16 @@ export default function App() {
             <AccountFlowView
               screen={activeTab}
               onNavigate={setActiveTab}
-              onSignIn={handleSignIn}
-              onLogout={handleSignOut}
+              onLogout={onSignOut}
               onOpenIntegrations={() => setApiKeysModalOpen(true)}
+              userEmail={session.user.email}
             />
           )}
         </main>
       </div>
 
       {/* Bottom Navigation Bar (Visible on mobile/tablet screens or simulated phone/tablet frames) */}
-      {isSignedIn && !['signin'].includes(activeTab) && (
+      {isSignedIn && (
         <div className={deviceMode !== 'desktop' ? 'block shrink-0' : 'md:hidden shrink-0'}>
           <BottomNav activeTab={activeTab} onSelectTab={setActiveTab} />
         </div>
