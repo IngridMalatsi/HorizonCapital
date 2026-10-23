@@ -80,7 +80,7 @@ function AppContent() {
         </View>
         <Pressable accessibilityRole="button" onPress={() => setRoute('home')} style={styles.profileButton}>
           <Text style={styles.avatar}>🥖</Text>
-          <Text style={styles.profileName}>Demo business</Text>
+          <Text style={styles.profileName}>Thandi's Bakery</Text>
           <Ionicons name="chevron-down" size={13} color={colors.muted} />
         </Pressable>
       </View>
