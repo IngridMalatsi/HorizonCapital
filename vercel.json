@@ -3,7 +3,8 @@
   "services": {
     "server": {
       "root": "server",
-      "runtime": "node"
+      "runtime": "node",
+      "entrypoint": "server.js"
     },
     "web-client": {
       "root": "web-client",
