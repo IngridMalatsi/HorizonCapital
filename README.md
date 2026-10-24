@@ -32,7 +32,7 @@ Shared Node.js HTTP API server. The current implemented endpoint reports API hea
 Supabase Auth handles sign-in. Business profiles, ledger entries, and other demo activity are currently held in client memory rather than persisted.
 
 ### Security & Compliance
-This project is a prototype, not a production financial service. Production security, compliance, payment processing, and fraud controls must be implemented and reviewed before handling real financial activity.
+This project is a prototype, not a production financial service. See [SECURITY.md](./SECURITY.md) for the SSDLC control status, current data boundaries, and security requirements. The compliance submission includes planned controls that are not yet implemented; they are explicitly identified there.
 
 ## Core Features
 
@@ -155,16 +155,22 @@ Configure the Supabase project URL and publishable key in `web-client/.env` usin
 
 ## Security Considerations
 
-This prototype is not approved for production financial use. Before production:
-
-- implement and test server-side authorization for every user-owned resource
-- add durable storage, input validation, audit logging, and operational monitoring
-- keep provider secrets on the server and review payment integrations
-- obtain qualified security, privacy, and regulatory reviews
+When Vercel is configured with `web-client` as its project root, its deployment
+configuration applies baseline browser security headers.
+Supabase HTTPS is required outside local development, and profile RLS is
+enabled by the supplied migration. A subsequent migration records profile
+changes in a tamper-evident hash chain; it is not an external immutable WORM
+archive. Vercel documents TLS 1.3 and hybrid PQC for compatible browsers, and
+the API project includes a TLS verification command, but actual deployed
+endpoints still need verification. These controls do not make the prototype
+production-ready: demo financial data is not user-isolated or persisted, and
+external audit retention, full security testing, incident response, and POPIA
+assessment remain outstanding. Follow the control status and deployment requirements in
+[SECURITY.md](./SECURITY.md) before handling real data.
 
 ## Compliance Focus
 
-Compliance requirements have not been implemented or assessed. Determine applicable regulatory obligations before using the product with real users or financial data.
+POPIA and other compliance obligations have not been legally assessed. Determine applicable requirements before using the product with real users or financial data.
 
 ## Development Workflow
 

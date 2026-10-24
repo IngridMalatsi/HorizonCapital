@@ -58,7 +58,6 @@ export default function MicroPosView({ onProcessPayment, currentProfile }) {
   // =========================================================================
   // API INTEGRATION POINT: SoftPOS & Tap-to-Pay Gateway
   // Provider: Stitch Money / Yoco SDK / Ozow / Capitec Pay API
-  // Config / Env: VITE_PAYMENT_API_KEY & VITE_PAYMENT_MERCHANT_ID (see src/config/apiConfig.js)
   // Replace this simulation with: await processSoftPosPayment(amt, receiptData)
   // =========================================================================
   const handleSimulateCardTap = () => {

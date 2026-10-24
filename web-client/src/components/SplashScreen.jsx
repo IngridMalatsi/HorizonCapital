@@ -5,7 +5,7 @@ export default function SplashScreen({ message = 'Growing stronger, together' })
     <main
       role="status"
       aria-live="polite"
-      className="min-h-screen w-full flex flex-col items-center justify-center gap-5 bg-[#F8F9FA] text-slate-100"
+      className="min-h-screen w-full flex flex-col items-center justify-center gap-5 bg-white text-slate-100"
     >
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-950/50">
         <Building2 size={32} aria-hidden="true" />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Building2 } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 
 const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20';
 
@@ -7,6 +7,7 @@ export default function AuthScreen({ supabase, initialError = '', configError = 
   const [mode, setMode] = useState('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(initialError);
@@ -34,7 +35,10 @@ export default function AuthScreen({ supabase, initialError = '', configError = 
           email: email.trim(),
           password,
           options: {
-            data: { business_name: businessName.trim() || null },
+            data: {
+              full_name: fullName.trim() || null,
+              business_name: businessName.trim() || null,
+            },
             emailRedirectTo: window.location.origin,
           },
         });
@@ -57,7 +61,7 @@ export default function AuthScreen({ supabase, initialError = '', configError = 
   };
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-[#F8F9FA] px-4 py-10 text-slate-100">
+    <main className="min-h-screen w-full flex items-center justify-center bg-white px-4 py-10 text-slate-100">
       <section className="w-full max-w-md">
         <header className="mb-7 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-slate-950">
@@ -99,17 +103,30 @@ export default function AuthScreen({ supabase, initialError = '', configError = 
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl shadow-black/20 sm:p-6">
             {isRegistering && (
-              <label className="block text-sm font-medium text-slate-300">
-                Business name <span className="font-normal text-slate-500">(optional)</span>
-                <input
-                  autoComplete="organization"
-                  className={inputClass}
-                  maxLength={120}
-                  onChange={(event) => setBusinessName(event.target.value)}
-                  placeholder="e.g. Thandi's Bakery"
-                  value={businessName}
-                />
-              </label>
+              <>
+                <label className="block text-sm font-medium text-slate-300">
+                  Your name <span className="font-normal text-slate-500">(optional)</span>
+                  <input
+                    autoComplete="name"
+                    className={inputClass}
+                    maxLength={120}
+                    onChange={(event) => setFullName(event.target.value)}
+                    placeholder="e.g. Thandi Khumalo"
+                    value={fullName}
+                  />
+                </label>
+                <label className="block text-sm font-medium text-slate-300">
+                  Business name <span className="font-normal text-slate-500">(optional)</span>
+                  <input
+                    autoComplete="organization"
+                    className={inputClass}
+                    maxLength={120}
+                    onChange={(event) => setBusinessName(event.target.value)}
+                    placeholder="e.g. Thandi's Bakery"
+                    value={businessName}
+                  />
+                </label>
+              </>
             )}
 
             <label className="block text-sm font-medium text-slate-300">

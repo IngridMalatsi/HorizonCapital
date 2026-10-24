@@ -57,7 +57,7 @@ export default function MenuScreen({
         <SectionTitle>Safety</SectionTitle>
         <ListRow
           title="Security & fraud protection"
-          detail="Payment safety, privacy, and post-quantum cryptography"
+          detail="Practical privacy guidance for this demo"
           onPress={() => onNavigate('security')}
           trailing={<Ionicons name="shield-checkmark-outline" size={19} color={colors.greenLight} />}
         />

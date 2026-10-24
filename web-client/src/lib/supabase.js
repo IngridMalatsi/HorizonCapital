@@ -10,7 +10,13 @@ function isValidSupabaseUrl(value) {
   if (!value) return false;
   try {
     const parsed = new URL(value);
-    return ['https:', 'http:'].includes(parsed.protocol) && Boolean(parsed.host) && !parsed.username && !parsed.password;
+    const isLocalDevelopmentUrl = import.meta.env.DEV
+      && parsed.protocol === 'http:'
+      && ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname);
+    return (parsed.protocol === 'https:' || isLocalDevelopmentUrl)
+      && Boolean(parsed.host)
+      && !parsed.username
+      && !parsed.password;
   } catch {
     return false;
   }
@@ -19,7 +25,7 @@ function isValidSupabaseUrl(value) {
 export const supabaseConfigError = !url || !key
   ? ''
   : !isValidSupabaseUrl(url)
-    ? 'The Supabase URL is invalid. Copy the Project URL from Supabase API settings; it should start with https://.'
+    ? 'Use an HTTPS Supabase Project URL. HTTP is allowed only for localhost during development.'
     : '';
 
 export const supabase = url && key && !supabaseConfigError

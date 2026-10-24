@@ -67,13 +67,13 @@ This project uses **React 19 + Vite + Tailwind CSS v4** with instant **Hot Modul
 
 | Path | Description | What You Can Edit |
 | :--- | :--- | :--- |
-| **`src/config/apiConfig.js`** | **Central API Registry** | Configure Claude/Gemini AI, Google Vision OCR, Stitch/Yoco payment gateways, CIPC verification, and Supabase database. |
+| **`src/lib/supabase.js`** | **Supabase authentication client** | Configure the Supabase URL and publishable key in `web-client/.env`. Keep all private provider secrets on a trusted server. |
 | **`src/components/ApiKeysModal.jsx`** | **In-App API Inspector** | Interactive modal to preview integration points, copy variable snippets, and check live connection status. |
 | **`src/data/mockData.js`** | **Central Business Data Store** | Edit MSME profiles (Thandi's Bakery, Sipho's Spaza), change 13-week cash flow values, add new WhatsApp presets, add Boxer/Makro receipts, and modify micro-loan offers. |
 | **`src/components/DashboardView.jsx`** | **Screen 1: Baseline Overview** | 13-Week cash projection chart, 5-check readiness score cards, and baseline liquidity boxes. |
-| **`src/components/OrderIntakeView.jsx`** | **Screens 2, 3 & 4: Core Engine** | WhatsApp chat bubble, simulated Claude AI parsing logic, unit economics breakdown, and the 50% deposit counter-offer generator. |
+| **`src/components/OrderIntakeView.jsx`** | **Screens 2, 3 & 4: Order demo** | Sample WhatsApp-style chat, timed client-side demonstration, unit economics display, and simulated counter-offer. No AI or WhatsApp service is connected. |
 | **`src/components/LedgerView.jsx`** | **Concept 2: Smart Ledger** | The "Cash Drawer vs Bank" toggle, transaction stream list, and the "Snap-to-Record" OCR receipt scanner. |
-| **`src/components/MicroPosView.jsx`** | **Concept 2: Micro-POS SoftPOS** | Phone NFC tap-to-pay terminal, numeric keypad, contactless wave animation, and digital WhatsApp receipt. |
+| **`src/components/MicroPosView.jsx`** | **Concept 2: Micro-POS demo** | Simulated payment terminal interaction and receipt. No real payment is processed. |
 | **`src/components/FundingView.jsx`** | **Concept 2: Scorecard & Credit** | 90-day transaction health meter and pre-approved micro-loan disbursement simulation. |
 | **`src/components/MarketLinkerView.jsx`**| **Concept 3: Market Linker** | Verified Profile (CIPC, SARS Tax PIN, bank status) and shareable Trust Badge with QR code. |
 | **`src/components/FunderReportModal.jsx`**| **Institutional ESD Audit** | The printable/exportable 1-page PDF credit dossier for corporate ESD programs and banks. |
@@ -83,23 +83,14 @@ This project uses **React 19 + Vite + Tailwind CSS v4** with instant **Hot Modul
 
 ---
 
-## 🔑 Plugging in Production API Keys
+## Environment variables and secret handling
 
-To connect real backends, copy `.env.example` to `.env` in the project root:
-
-```bash
-cp .env.example .env
-```
-
-| Integration | Provider Options | `.env` Variable | Code Hook Location |
-| :--- | :--- | :--- | :--- |
-| **WhatsApp AI Parser** | Anthropic Claude / Google Gemini | `VITE_ANTHROPIC_API_KEY` | `src/config/apiConfig.js` -> `callAiOrderParser()` |
-| **Receipt OCR** | Google Cloud Vision / Mindee | `VITE_VISION_OCR_API_KEY` | `src/config/apiConfig.js` -> `callOcrReceiptScanner()` |
-| **SoftPOS Gateway** | Stitch / Yoco / Ozow / Capitec | `VITE_PAYMENT_API_KEY` | `src/config/apiConfig.js` -> `processSoftPosPayment()` |
-| **CIPC & SARS Registry** | South Africa CIPC / SARS API | `VITE_CIPC_VERIFICATION_KEY` | `src/config/apiConfig.js` -> `verifyCipcBusiness()` |
-| **Cloud Database** | Supabase (PostgreSQL) / Firebase | `VITE_SUPABASE_URL` | `src/config/apiConfig.js` -> `supabaseClient` |
-
-> 💡 **In-App API Inspector:** You can also click the **"API Keys"** button in the top navbar while running the app to see live connection status, copy snippets, and inspect sample payloads!
+Copy `web-client/.env.example` to `web-client/.env` and configure the Supabase
+project URL and publishable key. `VITE_` variables are compiled into the
+browser bundle and must never contain service-role keys, passwords, or
+third-party provider secrets. No AI, OCR, payment, or registry integration is
+currently connected. See the project [`SECURITY.md`](../SECURITY.md) for the
+verified SSDLC status and remaining security work.
 
 ---
 

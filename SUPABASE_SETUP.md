@@ -8,7 +8,9 @@ Supabase Auth and are never written to the profiles table or application code.
 
 1. Create a project in Supabase and keep its database password private.
 2. Open **SQL Editor** and run
-   [`supabase/migrations/20261023000000_profiles.sql`](./supabase/migrations/20261023000000_profiles.sql).
+   [`supabase/migrations/20261023000000_profiles.sql`](./supabase/migrations/20261023000000_profiles.sql),
+   followed by
+   [`supabase/migrations/20261024000000_audit_log.sql`](./supabase/migrations/20261024000000_audit_log.sql).
 3. In **Authentication → URL Configuration**, set the Site URL to your web
    app's origin. Add each local and deployed web origin to the allowed redirect
    URLs, for example `http://localhost:5173/**` and your deployed HTTPS origin.
@@ -17,11 +19,20 @@ Supabase Auth and are never written to the profiles table or application code.
 5. Copy the project URL and its **publishable** key from the Supabase project
    Connect/API settings. A legacy `anon` key can be used if your project does
    not provide publishable keys.
+   Hosted Supabase project URLs must use HTTPS. Plain HTTP is accepted only
+   for localhost during development.
 
 The SQL migration enables row-level security on `public.profiles`. Signed-in
 users can read their own profile and update only its business name. A database
 trigger creates a profile when Supabase Auth creates the corresponding user.
 Deleting an auth user cascades to that profile.
+
+The audit migration records profile lifecycle and business-name changes in an
+append-only, hash-chained database table. App roles cannot read, update, or
+delete audit rows; a privileged database role can call
+`select public.verify_audit_event_chain();` to verify the current chain. This
+does not prevent a database owner from rewriting the log. Configure a separate
+retention-locked archive before describing audit records as immutable.
 
 ## 2. Configure the web client
 
@@ -51,8 +62,11 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 
 Restart Expo after changing these values. Expo public environment variables are
 bundled into the client app. For native builds, rebuild the app after
-configuration changes. The mobile client stores its Supabase auth session in
-the platform keychain/keystore using Expo SecureStore.
+configuration changes. The current Expo application loads the shared web
+client in a WebView, so the active sign-in session is managed by the web
+client's browser storage. The native Supabase adapter uses Expo SecureStore
+when native Supabase auth is used directly; it does not encrypt the WebView's
+session.
 
 ## Key and data safety
 
@@ -65,7 +79,8 @@ the platform keychain/keystore using Expo SecureStore.
 - Supabase Auth handles password hashing and authentication. The profile table
   contains only the auth user ID, optional business name, and account creation
   time; it does not contain passwords.
-- Browser auth sessions are persisted by Supabase in browser storage. Do not
+- Browser auth sessions are persisted by Supabase in browser storage; this
+  project does not add application-level encryption to that storage. Do not
   store identity documents, bank credentials, payment secrets, or other
   sensitive financial data in browser storage.
 - The current ledger, balances, readiness scores, and orders are still
@@ -73,6 +88,12 @@ the platform keychain/keystore using Expo SecureStore.
   Do not treat demo balances or offers as real account or credit data.
 - Apply database schema changes through reviewed migrations and test RLS with
   separate accounts before storing any additional user data.
+- The sample order-analysis screen is a client-side simulation; it does not
+  send pasted text to an AI provider. Do not use real customer data in the
+  prototype. PII redaction must be implemented and tested server-side before
+  any external AI integration is enabled.
+- See [`SECURITY.md`](./SECURITY.md) for the current SSDLC control status and
+  production security requirements.
 
 ## If registration or sign-in does not work
 

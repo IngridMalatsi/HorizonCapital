@@ -9,7 +9,7 @@ export default function DeviceSimulatorFrame({
   if (deviceMode === 'desktop') {
     // Standard responsive full-screen web app mode
     return (
-      <div className="relative min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-slate-950">
+      <div className="relative flex h-screen h-[100dvh] min-h-0 flex-col overflow-hidden bg-white text-slate-100">
         {children}
       </div>
     );

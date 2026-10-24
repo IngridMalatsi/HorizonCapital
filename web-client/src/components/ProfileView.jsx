@@ -2,7 +2,6 @@ import React from 'react';
 import {
   ArrowLeft,
   Building2,
-  KeyRound,
   Monitor,
   Smartphone,
   Tablet,
@@ -29,7 +28,6 @@ export default function ProfileView({
   onToggleSound,
   deviceMode,
   onSelectDeviceMode,
-  onOpenApiKeys,
   section = 'profile',
   onBack
 }) {
@@ -176,22 +174,6 @@ export default function ProfileView({
             </div>
           </div>
 
-          <div className="min-w-0 p-3 rounded-xl bg-slate-950 border border-slate-800 lg:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
-              <div>
-                <h3 className="text-xs font-semibold text-slate-200">API integration keys</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">Manage the existing integration configuration panel.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenApiKeys}
-              className="shrink-0 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
-            >
-              Open API key settings
-            </button>
-          </div>
         </div>
       </section>}
     </div>

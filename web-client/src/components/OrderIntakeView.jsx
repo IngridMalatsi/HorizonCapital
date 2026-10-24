@@ -17,7 +17,6 @@ import {
   Clock, 
   Percent, 
   Zap,
-  HelpCircle,
   ThumbsUp,
   AlertCircle
 } from 'lucide-react';
@@ -36,7 +35,6 @@ export default function OrderIntakeView({
 
   const [inputMessage, setInputMessage] = useState(activePreset.rawMessage);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzed, setAnalyzed] = useState(true);
   const [analysisStep, setAnalysisStep] = useState(4); // 1: Parsing, 2: Economics, 3: Cashflow, 4: Done
   const [copied, setCopied] = useState(false);
   const [customCounterDeposit, setCustomCounterDeposit] = useState(50);
@@ -45,20 +43,12 @@ export default function OrderIntakeView({
   const handleSelectPreset = (preset) => {
     onSelectPreset(preset.id);
     setInputMessage(preset.rawMessage);
-    setAnalyzed(true);
     setAnalysisStep(4);
     sounds.playPosTap();
   };
 
-  // =========================================================================
-  // API INTEGRATION POINT: AI Order Parsing & Scam Intelligence
-  // Provider: Anthropic Claude API (messages.create) or Google Gemini API
-  // Config / Env: VITE_ANTHROPIC_API_KEY (see src/config/apiConfig.js)
-  // Replace this simulation timer with: await callAiOrderParser(inputMessage)
-  // =========================================================================
   const handleRunAiAnalysis = () => {
     setIsAnalyzing(true);
-    setAnalyzed(false);
     setAnalysisStep(1);
     sounds.playPosTap();
 
@@ -67,7 +57,6 @@ export default function OrderIntakeView({
     setTimeout(() => {
       setAnalysisStep(4);
       setIsAnalyzing(false);
-      setAnalyzed(true);
       if (activePreset.extractedData.riskLevel === 'CRITICAL') {
         sounds.playWarning();
       } else {
@@ -96,8 +85,6 @@ export default function OrderIntakeView({
 
   const extracted = activePreset.extractedData;
   const isCriticalRisk = extracted.riskLevel === 'CRITICAL';
-  const isSafeRisk = extracted.riskLevel === 'SAFE';
-
   return (
     <div className="w-full max-w-full min-w-0 space-y-4 sm:space-y-6 pb-28 sm:pb-24 md:pb-8">
       {/* Clean, Modern Header Bar */}
@@ -111,7 +98,7 @@ export default function OrderIntakeView({
             WhatsApp Order Risk Engine
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-            Parse unstructured customer chats into structured pricing, calculate margins, and protect cash buffers before saying yes.
+            Review sample order details and demonstration risk indicators. This screen does not connect to WhatsApp or an AI service.
           </p>
         </div>
 
@@ -172,7 +159,7 @@ export default function OrderIntakeView({
             </div>
 
             {/* Simulated WhatsApp Chat Bubble */}
-            <div className="p-4 rounded-2xl rounded-tl-sm bg-[#FFF1E8] border border-orange-200 text-slate-800 shadow-inner leading-relaxed relative">
+            <div className="p-4 rounded-2xl rounded-tl-sm bg-[#FFF1E8] border border-orange-500 text-slate-800 shadow-inner leading-relaxed relative">
               <div className="flex items-center justify-between text-[11px] text-emerald-400 font-bold mb-1.5">
                 <span>{activePreset.sender}</span>
                 <span className="text-[10px] uppercase tracking-wider bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/60">Township Order</span>
@@ -183,7 +170,6 @@ export default function OrderIntakeView({
               </div>
             </div>
 
-            {/* Editable Raw Chat Box (allows user to test custom township messages) */}
             <div className="mt-3">
               <label className="text-[11px] font-semibold text-slate-400 block mb-1">
                 Edit or Paste Another WhatsApp Message:
@@ -191,13 +177,16 @@ export default function OrderIntakeView({
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
+                maxLength={4000}
                 rows={3}
                 placeholder="Paste informal chat message here (e.g. 'Hi, need 100 muffins for Saturday...')"
                 className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-emerald-500 transition-colors resize-none"
               />
+              <p className="mt-2 text-[11px] leading-relaxed text-amber-300">
+                Demo only: do not paste real phone numbers, addresses, ID details, banking credentials, or other sensitive personal information. Text stays in this browser and is not sent to WhatsApp or an AI provider.
+              </p>
             </div>
 
-            {/* Run AI Analysis Action Button */}
             <button
               onClick={handleRunAiAnalysis}
               disabled={isAnalyzing}
@@ -206,12 +195,12 @@ export default function OrderIntakeView({
               {isAnalyzing ? (
                 <>
                   <Sparkles className="w-4 h-4 animate-spin text-emerald-200" />
-                  <span>AI Parsing Transaction Data...</span>
+                  <span>Running demo analysis...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-emerald-200" />
-                  <span>Parse Order with Claude Intelligence</span>
+                  <span>Run demo order analysis</span>
                 </>
               )}
             </button>
@@ -238,25 +227,6 @@ export default function OrderIntakeView({
               </div>
             )}
 
-            {/* Extracted JSON Schema Preview (As mentioned in technical brief) */}
-            {analyzed && !isAnalyzing && (
-              <div className="mt-4 pt-3 border-t border-slate-800">
-                <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1.5">
-                  <span className="font-semibold uppercase tracking-wider">Structured JSON Schema Output</span>
-                  <span className="text-emerald-400 font-mono">status: 200 OK</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 text-[11px] font-mono text-emerald-300 overflow-x-auto">
-                  <pre>{JSON.stringify({
-                    client: extracted.client,
-                    item: extracted.item,
-                    quantity: extracted.quantity,
-                    deadline: extracted.deadline,
-                    quotedPrice: `R ${extracted.offeredPrice}`,
-                    terms: extracted.paymentTerms
-                  }, null, 2)}</pre>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -326,15 +296,11 @@ export default function OrderIntakeView({
             </div>
 
             {/* The Critical Verdict: "Can I Afford to Say Yes Right Now?" */}
-            <div className={`p-4 rounded-xl border ${
-              isCriticalRisk
-                ? 'bg-gradient-to-r from-rose-950/70 to-slate-900 border-rose-600/70'
-                : 'bg-gradient-to-r from-emerald-950/70 to-slate-900 border-emerald-600/70'
-            }`}>
-              <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">
+            <div className="p-4 rounded-xl border border-orange-500 bg-[#FFF1E8]">
+              <div className="text-xs text-black uppercase tracking-wider font-semibold">
                 Decision Engine Verdict:
               </div>
-              <div className="text-base sm:text-lg font-black mt-0.5 text-white flex items-center gap-2">
+              <div className="text-base sm:text-lg font-black mt-0.5 text-black flex items-center gap-2">
                 {isCriticalRisk ? (
                   <>
                     <span className="text-rose-400">CANNOT AFFORD TO ACCEPT ON UNHEDGED CREDIT</span>
@@ -345,7 +311,7 @@ export default function OrderIntakeView({
                   </>
                 )}
               </div>
-              <p className="text-xs text-slate-300 mt-1">
+              <p className="text-xs text-black mt-1">
                 {isCriticalRisk
                   ? "Saying 'Yes' as-is will empty your cash drawer for raw ingredients, leaving you with only R320 before delivery payout. If Mbali pays late (as she did 3 times before), your bakery faces immediate insolvency."
                   : "Order terms cover your raw material costs with safe buffer headroom. You can proceed with standard confirmation."}

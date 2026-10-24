@@ -15,7 +15,7 @@ import {
 import NativeWebView, { type WebViewNavigation } from 'react-native-webview';
 
 const colors = {
-  background: '#F8F9FA',
+  background: '#FFFFFF',
   surface: '#FFFFFF',
   border: '#DDE1E5',
   text: '#1A1A1A',
@@ -25,12 +25,23 @@ const colors = {
 
 function getWebClientUrl() {
   const configuredUrl = process.env.EXPO_PUBLIC_WEB_CLIENT_URL?.trim();
-  if (configuredUrl) return configuredUrl;
-  if (!__DEV__) return '';
+  let candidateUrl = configuredUrl;
+  if (!candidateUrl) {
+    if (!__DEV__) return '';
+    const expoHost = Constants.expoConfig?.hostUri?.split(':')[0];
+    const host = expoHost || (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
+    candidateUrl = `http://${host}:5173`;
+  }
 
-  const expoHost = Constants.expoConfig?.hostUri?.split(':')[0];
-  const host = expoHost || (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
-  return `http://${host}:5173`;
+  try {
+    const parsedUrl = new URL(candidateUrl);
+    const isDevelopmentUrl = __DEV__ && parsedUrl.protocol === 'http:';
+    return parsedUrl.protocol === 'https:' || isDevelopmentUrl
+      ? parsedUrl.toString().replace(/\/$/, '')
+      : '';
+  } catch {
+    return '';
+  }
 }
 
 export default function App() {

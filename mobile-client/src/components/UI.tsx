@@ -3,9 +3,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const colors = {
-  background: '#F8F9FA',
+  background: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceRaised: '#F8F9FA',
+  surfaceRaised: '#FFFFFF',
   border: '#DDE1E5',
   text: '#1A1A1A',
   muted: '#6C757D',

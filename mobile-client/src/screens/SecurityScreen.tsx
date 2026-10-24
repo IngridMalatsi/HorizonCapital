@@ -23,9 +23,9 @@ export default function SecurityScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>What this demo protects</SectionTitle>
+        <SectionTitle>What this demo does and does not protect</SectionTitle>
         <Text style={styles.copy}>
-          This prototype has no login, bank connection, payment processing, or server account. Example balances, readiness scores, and supplier details are not verified and are not credit decisions. Do not enter real financial, identity, or customer information.
+          The shared web app uses Supabase email sign-in and the profile table is protected by row-level security. This does not provide application-level encryption for the browser session or protect the prototype's demo data. There is no bank connection or real payment processing. Example balances, readiness scores, and supplier details are not verified and are not credit decisions. Do not enter real financial, identity, or customer information.
         </Text>
       </Card>
 

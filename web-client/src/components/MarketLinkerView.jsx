@@ -21,7 +21,6 @@ export default function MarketLinkerView({
   // =========================================================================
   // API INTEGRATION POINT: CIPC & SARS Registry Validation
   // Provider: South Africa CIPC BizPortal API / SARS eFiling Compliance PIN API
-  // Config / Env: VITE_CIPC_VERIFICATION_KEY (see src/config/apiConfig.js)
   // Call: await verifyCipcBusiness(currentProfile.cipcReg)
   // =========================================================================
   const [copiedLink, setCopiedLink] = useState(false);

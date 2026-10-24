@@ -19,8 +19,8 @@ export default function BottomNav({ activeTab, onSelectTab }) {
     'settings',
     'user-profile',
     'account-settings',
-    'integrations',
     'appearance',
+    'help-support',
     'profile',
     'profile-funding',
     'profile-trust',
@@ -32,7 +32,7 @@ export default function BottomNav({ activeTab, onSelectTab }) {
     : activeTab;
 
   return (
-    <nav className="sticky bottom-0 left-0 right-0 z-30 w-full bg-slate-900/95 backdrop-blur-md border-t border-slate-800/90 text-slate-400 px-1 py-1 shadow-2xl shrink-0 select-none">
+    <nav className="relative z-30 w-full bg-white border-t border-orange-200 text-slate-400 px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(26,26,26,0.08)] shrink-0 select-none">
       <div className="max-w-lg mx-auto grid grid-cols-4 gap-0.5">
         {navItems.map((item) => {
           const Icon = item.icon;

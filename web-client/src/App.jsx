@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
@@ -9,7 +9,6 @@ import MicroPosView from './components/MicroPosView';
 import ProfileView from './components/ProfileView';
 import AccountFlowView from './components/AccountFlowView';
 import FunderReportModal from './components/FunderReportModal';
-import ApiKeysModal from './components/ApiKeysModal';
 import DeviceSimulatorFrame from './components/DeviceSimulatorFrame';
 import TrustQrModal from './components/TrustQrModal';
 import AuthScreen from './components/AuthScreen';
@@ -32,6 +31,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(supabaseConfigured);
   const [authError, setAuthError] = useState('');
+  const [profileError, setProfileError] = useState('');
   const [apiError, setApiError] = useState('');
   const [splashVisible, setSplashVisible] = useState(true);
 
@@ -99,10 +99,15 @@ export default function App() {
 
   return (
     <>
-      <DashboardApp session={session} onSignOut={handleSignOut} />
+      <DashboardApp session={session} onSignOut={handleSignOut} onProfileError={setProfileError} />
       {apiError && (
         <div className="fixed bottom-20 left-4 right-4 z-[100] mx-auto flex max-w-xl items-center gap-4 rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900 shadow-xl">
           <p role="alert">{apiError}</p>
+        </div>
+      )}
+      {profileError && (
+        <div className="fixed bottom-20 left-4 right-4 z-[100] mx-auto flex max-w-xl items-center gap-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 shadow-xl">
+          <p role="alert">{profileError}</p>
         </div>
       )}
       {authError && (
@@ -115,19 +120,40 @@ export default function App() {
   );
 }
 
-function DashboardApp({ session, onSignOut }) {
-  // Active Profile State
+function getAccountName(user) {
+  const metadata = user.user_metadata || {};
+  const metadataName = [metadata.first_name, metadata.last_name]
+    .filter((name) => typeof name === 'string')
+    .join(' ')
+    .trim();
+  const fullName = metadata.full_name || metadata.name || metadataName;
+  if (typeof fullName === 'string' && fullName.trim()) return fullName.trim();
+  return user.email?.split('@')[0] || 'Account';
+}
+
+function getBusinessName(user) {
+  const businessName = user.user_metadata?.business_name;
+  return typeof businessName === 'string' ? businessName.trim() : '';
+}
+
+function DashboardApp({ session, onSignOut, onProfileError }) {
+  const accountName = getAccountName(session.user);
+  const accountEmail = session.user.email || '';
+  const [accountBusinessName, setAccountBusinessName] = useState(
+    getBusinessName(session.user),
+  );
   const [currentProfile, setCurrentProfile] = useState(() => {
-    const initialProfile = BUSINESS_PROFILES[0];
-    const accountBusinessName = session.user.user_metadata?.business_name?.trim();
+    const initialProfile = { ...BUSINESS_PROFILES[0] };
     return {
       ...initialProfile,
-      name: accountBusinessName || session.user.email || 'My business',
+      name: accountBusinessName || accountName,
+      owner: accountName,
     };
   });
   
   // Navigation & View Mode State
   const [activeTab, setActiveTab] = useState('dashboard');
+  const mainRef = useRef(null);
   const isSignedIn = Boolean(session);
   const [deviceMode, setDeviceMode] = useState('desktop'); // 'desktop', 'smartphone', 'tablet'
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -149,8 +175,56 @@ function DashboardApp({ session, onSignOut }) {
   // Funding & Report Modals State
   const [loanDisbursed, setLoanDisbursed] = useState(false);
   const [funderReportOpen, setFunderReportOpen] = useState(false);
-  const [apiKeysModalOpen, setApiKeysModalOpen] = useState(false);
   const [trustQrOpen, setTrustQrOpen] = useState(false);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [activeTab]);
+
+  useEffect(() => {
+    let active = true;
+    const loadAccountProfile = async () => {
+      const metadataBusinessName = getBusinessName(session.user);
+      setAccountBusinessName(metadataBusinessName);
+      setCurrentProfile((current) => ({
+        ...current,
+        name: metadataBusinessName || accountName,
+        owner: accountName,
+      }));
+
+      if (!supabase) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('business_name')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!active) return;
+      if (error) {
+        const missingProfilesTable = error.code === 'PGRST205'
+          || error.message.includes("Could not find the table 'public.profiles' in the schema cache");
+        onProfileError(missingProfilesTable
+          ? 'The Supabase public.profiles table is missing. Run supabase/migrations/20261023000000_profiles.sql in the Supabase SQL Editor. Your signed-in name and business name will use Auth metadata until then.'
+          : `Unable to load your business profile: ${error.message}`);
+        return;
+      }
+
+      const businessName = data?.business_name?.trim() || metadataBusinessName;
+      setAccountBusinessName(businessName);
+      setCurrentProfile((current) => ({
+        ...current,
+        name: businessName || accountName,
+        owner: accountName,
+      }));
+      onProfileError('');
+    };
+
+    void loadAccountProfile();
+    return () => {
+      active = false;
+    };
+  }, [session.user, accountName, onProfileError]);
 
   // Switch profile handler
   const handleSelectProfile = (profile) => {
@@ -331,6 +405,8 @@ function DashboardApp({ session, onSignOut }) {
       {isSignedIn && (
         <Navbar
           currentProfile={currentProfile}
+          accountName={accountName}
+          accountEmail={accountEmail}
           onSelectProfile={handleSelectProfile}
           profiles={BUSINESS_PROFILES}
           deviceMode={deviceMode}
@@ -338,7 +414,6 @@ function DashboardApp({ session, onSignOut }) {
           soundEnabled={soundEnabled}
           onToggleSound={handleToggleSound}
           onOpenReport={() => setFunderReportOpen(true)}
-          onOpenApiKeys={() => setApiKeysModalOpen(true)}
         />
       )}
 
@@ -362,7 +437,7 @@ function DashboardApp({ session, onSignOut }) {
         )}
 
         {/* Dynamic Main View Content Area */}
-        <main className="relative flex-1 max-w-7xl mx-auto w-full min-w-0 max-w-[100vw] px-2.5 sm:px-6 py-3.5 sm:py-6 overflow-y-auto overflow-x-hidden">
+        <main ref={mainRef} className="relative flex-1 min-h-0 max-w-7xl mx-auto w-full min-w-0 max-w-[100vw] px-2.5 sm:px-6 py-3.5 sm:py-6 overflow-y-auto overflow-x-hidden overscroll-contain">
           {activeTab === 'dashboard' && (
             <DashboardView
               currentProfile={currentProfile}
@@ -423,17 +498,17 @@ function DashboardApp({ session, onSignOut }) {
               onToggleSound={handleToggleSound}
               deviceMode={deviceMode}
               onSelectDeviceMode={handleSelectDeviceMode}
-              onOpenApiKeys={() => setApiKeysModalOpen(true)}
             />
           )}
 
-          {['menu', 'settings', 'user-profile', 'account-settings', 'integrations', 'appearance'].includes(activeTab) && (
+          {['menu', 'settings', 'user-profile', 'account-settings', 'appearance', 'help-support'].includes(activeTab) && (
             <AccountFlowView
               screen={activeTab}
               onNavigate={setActiveTab}
               onLogout={onSignOut}
-              onOpenIntegrations={() => setApiKeysModalOpen(true)}
-              userEmail={session.user.email}
+              userEmail={accountEmail}
+              userName={accountName}
+              businessName={accountBusinessName}
             />
           )}
 
@@ -442,8 +517,9 @@ function DashboardApp({ session, onSignOut }) {
               screen={activeTab}
               onNavigate={setActiveTab}
               onLogout={onSignOut}
-              onOpenIntegrations={() => setApiKeysModalOpen(true)}
-              userEmail={session.user.email}
+              userEmail={accountEmail}
+              userName={accountName}
+              businessName={accountBusinessName}
             />
           )}
         </main>
@@ -474,12 +550,6 @@ function DashboardApp({ session, onSignOut }) {
         cashFlowWeeks={cashFlowWeeks}
         cashInDrawer={cashInDrawer}
         digitalBankBalance={digitalBankBalance}
-      />
-
-      {/* External API Keys & Integration Architecture Modal */}
-      <ApiKeysModal
-        isOpen={apiKeysModalOpen}
-        onClose={() => setApiKeysModalOpen(false)}
       />
     </DeviceSimulatorFrame>
   );

@@ -14,6 +14,8 @@ import { sounds } from '../utils/soundEffects';
 
 export default function Navbar({
   currentProfile,
+  accountName,
+  accountEmail,
   deviceMode,
   onSelectDeviceMode,
   soundEnabled,
@@ -33,14 +35,14 @@ export default function Navbar({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className={`${deviceMode === 'smartphone' ? 'text-[11px]' : 'max-sm:text-xs text-sm sm:text-base'} font-bold tracking-tight text-white whitespace-nowrap`}>
-                  {currentProfile?.name || 'Your business'}
+                  {accountName || currentProfile?.owner || 'Account'}
                 </span>
                 <span className={`${deviceMode === 'smartphone' ? 'hidden' : 'hidden md:inline-flex'} items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 uppercase tracking-wider`}>
                   Active
                 </span>
               </div>
               <p className={`text-[10px] sm:text-[11px] text-slate-400 truncate ${deviceMode === 'smartphone' ? 'hidden' : 'hidden sm:block'}`}>
-                {currentProfile?.name || 'Your business details'}{currentProfile?.location ? ` · ${currentProfile.location}` : ''}
+                {accountEmail || currentProfile?.name || 'Account details'}
               </p>
             </div>
           </div>

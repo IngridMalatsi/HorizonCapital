@@ -7,7 +7,7 @@
 }
 
 :root {
-  --palette-background: #F8F9FA;
+  --palette-background: #FFFFFF;
   --palette-surface: #FFFFFF;
   --palette-orange: #FF6B00;
   --palette-orange-dark: #B84D00;
@@ -52,6 +52,7 @@
 
   #root {
     min-height: 100vh;
+    min-height: 100dvh;
   }
 
   main, section, header, article, nav {
@@ -169,6 +170,10 @@
 [class*="border-green-"],
 [class*="border-orange-"],
 [class*="border-amber-"] {
+  border-color: var(--palette-orange) !important;
+}
+
+[class*="rounded-"][class*="border-orange-"] {
   border-color: var(--palette-orange) !important;
 }
 
